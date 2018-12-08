@@ -35,6 +35,14 @@ class Data:
         for key in self.num_of_words:
             if self.num_of_words[key] < self.threshold:
                 self.num_of_words.pop(key, None)
+    def findCoOccurance(self, type):
+        for line in self.sentences:
+            if line == '\n':
+                continue
+            self.findCoOccuranceForSentence(line, type)
+
+    def findCoOccuranceForSentence(self, sentence, type):
+        return None
 
 if __name__ == '__main__':
     #create data class
