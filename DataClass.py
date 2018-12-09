@@ -3,8 +3,6 @@ from collections import defaultdict
 
 class Data:
     def __init__(self, fileName):
-        #self.sentences = []
-        # self.sentences_dict = {}
         self.linesInFile = []
         self.num_of_words = defaultdict(int)#key is the word as lemma form (stem)
         self.file_name = fileName
@@ -16,6 +14,21 @@ class Data:
         self.readData()
         self.countNumOfWords()
         self.filterWords()
+        self.distributional_vectors_type3 = []
+        self.features_type3 = {}
+        self.prepsitions = set(['aboard', 'about', 'above','across','after', 'against', 'ahead of',  'along', 'amid',
+                               'amidst',  'among', 'around', 'as', 'as far as', 'as of','aside from', 'at',
+                                'athwart', 'atop', 'barring', 'because of', 'before', 'behind',
+                                'below', 'beneath', 'beside', 'besides', 'between', 'beyond', 'but', 'by',
+                                'by means of', 'circa', 'concernir', 'despite', 'down', 'during', 'except', 'except for',
+                                'excluding', 'far from', 'following', 'for', 'from', 'in', 'in accordance with', 'in addition to',
+                                'in case of', 'in front of', 'in lieu of', 'in place of', 'in spite of',
+                                'including', 'inside', 'instead of', 'into', 'like', 'minus', 'near', 'next to',
+                                'notwithstanding', 'of', 'off', 'on', 'on account of', 'on behalf of', 'on top of',
+                                'onto', 'opposite', 'out', 'out of', 'outside', 'over', 'past', 'plus', 'prior to',
+                                'regarding', 'regardless of', 'save', 'since', 'than', 'through', 'throughout', 'till',
+                                'to', 'toward', 'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon',
+                                'versus', 'via', 'with', 'with regard to', 'within', 'without'])
 
 
     def readData(self):
@@ -32,9 +45,13 @@ class Data:
             self.num_of_words[spltted_line[2]] += 1
         print('finished counting words')
     def filterWords(self):
+        keys_to_drop = []
         for key in self.num_of_words:
             if self.num_of_words[key] < self.threshold:
-                self.num_of_words.pop(key, None)
+                keys_to_drop.append(key)
+        for key in keys_to_drop:
+            self.num_of_words.pop(key, None)
+        print("finished filtering dictionary")
     def findCoOccurance(self, type):
         sentence = []
         for line in self.linesInFile:
@@ -45,6 +62,18 @@ class Data:
 
 
     def findCoOccuranceForSentence(self, sentence, type):
+        splitted_sentence = []
+        #split the words by '\t'
+        for word in sentence:
+            splitted_sentence.append(word.split('\t'))
+        #go over the words, each time a target word is selected
+        for splitted_word in splitted_sentence:
+            target_word_id = splitted_word[0]
+            #find all other words that are related to the target
+            for word in splitted_sentence:
+                if word[6] == target_word_id:
+                    if type == 3:
+                        print('yay')
         return None
 
 if __name__ == '__main__':
@@ -70,5 +99,6 @@ if __name__ == '__main__':
         sentence = []
             #continue
              sentence.append(line)
-
+#self.sentences = []
+        # self.sentences_dict = {}
 '''
