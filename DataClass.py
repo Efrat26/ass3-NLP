@@ -3,7 +3,8 @@ from collections import defaultdict
 
 class Data:
     def __init__(self, fileName):
-        self.sentences = []
+        #self.sentences = []
+        # self.sentences_dict = {}
         self.linesInFile = []
         self.num_of_words = defaultdict(int)#key is the word as lemma form (stem)
         self.file_name = fileName
@@ -22,31 +23,26 @@ class Data:
             self.linesInFile = f.readlines()
         print("finished reading data")
     def countNumOfWords(self):
-        sentence = []
-        #start = True
         for line in self.linesInFile:
-            line = line.rstrip().split('\t')
-            if line[0] == '1':
-                #if start:
-                    #start = False
-                if sentence.__len__() > 0:
-                    self.sentences.append(sentence)
-                sentence = []
-                    #continue
-            if len(line) != 10:
+            spltted_line = line.split('\t')
+            # skip empty lines or function words
+            if len(spltted_line) != 10 or spltted_line[3] not in self.content_words_tags or spltted_line[2]\
+                    in self.function_words_lemma_form:
                 continue
-            sentence.append(line)
-            self.num_of_words[line[2]] +=1
-        print('finished counting words & separate to sentences')
+            self.num_of_words[spltted_line[2]] += 1
+        print('finished counting words')
     def filterWords(self):
         for key in self.num_of_words:
             if self.num_of_words[key] < self.threshold:
                 self.num_of_words.pop(key, None)
     def findCoOccurance(self, type):
-        for line in self.sentences:
+        sentence = []
+        for line in self.linesInFile:
+            sentence.append(line)
             if line == '\n':
-                continue
-            self.findCoOccuranceForSentence(line, type)
+                self.findCoOccuranceForSentence(sentence, type)
+                sentence = []
+
 
     def findCoOccuranceForSentence(self, sentence, type):
         return None
@@ -59,3 +55,20 @@ if __name__ == '__main__':
     data_object = Data(file_name)
     data_object.findCoOccurance(3)
 
+'''
+   sentence = []
+   line_num = 0
+#start = True
+            line = line.split('\t')
+    if line[0] == '1':
+        #if start:
+            #start = False
+        if sentence.__len__() > 0:
+            self.sentences_dict[line_num] = sentence
+            #self.sentences.append(sentence)
+        line_num += 1
+        sentence = []
+            #continue
+             sentence.append(line)
+
+'''
