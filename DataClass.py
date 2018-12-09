@@ -55,10 +55,11 @@ class Data:
     def findCoOccurance(self, type):
         sentence = []
         for line in self.linesInFile:
-            sentence.append(line)
             if line == '\n':
                 self.findCoOccuranceForSentence(sentence, type)
                 sentence = []
+            else:
+                sentence.append(line)
 
 
     def findCoOccuranceForSentence(self, sentence, type):
@@ -70,10 +71,13 @@ class Data:
         for splitted_word in splitted_sentence:
             target_word_id = splitted_word[0]
             #find all other words that are related to the target
-            for word in splitted_sentence:
-                if word[6] == target_word_id:
+            for ind in range(0, len(splitted_sentence)):
+                if splitted_sentence[ind][6] == target_word_id:
                     if type == 3:
-                        print('yay')
+                        if splitted_sentence[ind][3] == 'IN' and (splitted_sentence[ind][1].lower()
+                                                                  in self.prepsitions or
+                                                                  splitted_sentence[ind][2].lower() in self.prepsitions):
+                            print('preposition word: ' + splitted_sentence[ind][1])
         return None
 
 if __name__ == '__main__':
