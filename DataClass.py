@@ -5,7 +5,7 @@ class Data:
     def __init__(self, fileName):
         self.sentences = []
         self.linesInFile = []
-        self.num_of_words = defaultdict(int)
+        self.num_of_words = defaultdict(int)#key is the word as lemma form (stem)
         self.file_name = fileName
         # tags of content words based on penn tree bank tagset, we mostly chose the tags of nouns, verbs and adjectives
         self.content_words_tags = set(['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'RB', 'RBR', 'RBS', 'VB',
@@ -23,20 +23,21 @@ class Data:
         print("finished reading data")
     def countNumOfWords(self):
         sentence = []
-        start = True
+        #start = True
         for line in self.linesInFile:
             line = line.rstrip().split('\t')
             if line[0] == '1':
-                if start:
-                    start = False
-                    continue
-                self.sentences.append(sentence)
+                #if start:
+                    #start = False
+                if sentence.__len__() > 0:
+                    self.sentences.append(sentence)
                 sentence = []
-            sentence.append(line)
+                    #continue
             if len(line) != 10:
                 continue
+            sentence.append(line)
             self.num_of_words[line[2]] +=1
-
+        print('finished counting words & separate to sentences')
     def filterWords(self):
         for key in self.num_of_words:
             if self.num_of_words[key] < self.threshold:
@@ -56,3 +57,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
     data_object = Data(file_name)
+    data_object.findCoOccurance(3)
+
