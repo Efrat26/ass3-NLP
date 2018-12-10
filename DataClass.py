@@ -1,5 +1,6 @@
 import sys
 from collections import defaultdict
+import numpy as np
 
 class Data:
     def __init__(self, fileName):
@@ -10,6 +11,7 @@ class Data:
         self.content_words_tags = set(['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'RB', 'RBR', 'RBS', 'VB',
                                       'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'])
         self.function_words_lemma_form = set(['be', 'have', 'do', '\'s', '[', ']'])
+        #self.threshold = 1
         self.threshold = 100
         self.distributional_vectors_type3 = []
         self.features_type3_ind = {}
@@ -63,13 +65,17 @@ class Data:
 
 
     def findCoOccurance(self, type):
+        num_of_Sentence = 0
         sentence = []
         for line in self.linesInFile:
             if line == '\n':
+                num_of_Sentence += 1
                 self.findCoOccuranceForSentence(sentence, type)
                 sentence = []
+                print('num of sentence: ' + str(num_of_Sentence))
             else:
                 sentence.append(line)
+
 
 
     def findCoOccuranceForSentence(self, sentence, type):
@@ -93,17 +99,18 @@ class Data:
                         if splitted_sentence[ind][3] == 'IN' and (splitted_sentence[ind][1].lower()
                                                                   in self.prepsitions or
                                                                   splitted_sentence[ind][2].lower() in self.prepsitions):
-                            print('preposition word: ' + splitted_sentence[ind][1])
+                            #print('preposition word: ' + splitted_sentence[ind][1])
+                            continue
                             #add_feature = True #TODO: add the suitable features
                         # if the word is in the list of the words that we are interested in them:
                         elif splitted_sentence[ind][2] in self.num_of_words:
                             #create features for parent
-                            feature_child =  splitted_sentence[ind][1] + ' ' +splitted_sentence[ind][3] + ' ' + 'child'
-                            feature_parent = splitted_word[1] + ' ' + splitted_word[3] + ' ' + 'parent'
+                            feature_child =  splitted_sentence[ind][1] + ' ' +splitted_sentence[ind][7] + ' ' + 'child'
+                            #feature_parent = splitted_word[1] + ' ' + splitted_word[7] + ' ' + 'parent'
                             add_feature = True
                         if add_feature:
                             self.addFeatureType3(feature_child, splitted_word)
-                            self.addFeatureType3(feature_parent, splitted_sentence[ind])
+                            #self.addFeatureType3(feature_parent, splitted_sentence[ind])
                             add_feature = False
     def addFeatureType3(self, feature, sentence):
         number_of_words = len(self.num_of_words)
@@ -114,16 +121,18 @@ class Data:
             self.features_type3_ind[feature] = len(self.list_of_features_type3) - 1
             # create a zero vecctor, put 1 in the place of the parent word
             # (parent has this feature)
-            vector = [0] * number_of_words
+            set_holds_ones_positions = set()
             word_feature_added_ind = self.content_words_to_ind[sentence[2]]
-            vector[word_feature_added_ind] = 1
-            self.distributional_vectors_type3.append(vector)
+            set_holds_ones_positions.add(word_feature_added_ind)
+            #vector[word_feature_added_ind] = 1
+            self.distributional_vectors_type3.append(set_holds_ones_positions)
         # if already exists - then put 1 in the feature vector in the place of the parent word
         else:
             vector_ind = self.features_type3_ind[feature]
             vector = self.distributional_vectors_type3[vector_ind]
             word_feature_added_ind = self.content_words_to_ind[sentence[2]]
-            vector[word_feature_added_ind] = 1
+            vector.add(word_feature_added_ind)
+            #vector[word_feature_added_ind] = 1
             self.distributional_vectors_type3[vector_ind] = vector
 
 
