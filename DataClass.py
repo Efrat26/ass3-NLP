@@ -74,6 +74,37 @@ class Data:
         return False
 
 
+    def findNounPrepositionPointsTo(self, prep_word, sentences):
+        prep_head_ind = int(prep_word[6])
+        stop = False
+        list_of_nouns = ['NN', 'NNS', 'NNP', 'NNPS']
+        while not stop:
+            examined_sentence = sentences[prep_head_ind-1]
+            examined_sentence_tag = examined_sentence[3]
+            #if examined_sentence_tag in list_of_nouns:#TODO finish method
+
+
+    def findWordPointsToPreposition(self, prep_word, sentences):
+        prep_word_index = int(prep_word[0])
+        index = prep_word_index
+        stop = False
+        # case 3.2 - find the word that the preposition points to and return it with the deprel to the preposition
+        current_sentence = sentences[index]
+        while not stop:
+            current_sentence_tag = current_sentence[3]
+            current_sentence_head = int(current_sentence[6])
+            if current_sentence_head == prep_word_index:
+                #and current_sentence_tag != 'DT'
+                return [current_sentence[1], current_sentence[7]]
+            elif index+1 < len(sentences):
+                index += 1
+                #current_sentence_head = int(current_sentence[6])
+                current_sentence = sentences[index]
+            else:
+                return None
+        #return None
+
+
 
     def findCoOccurance(self, type):
         num_of_Sentence = 0
@@ -92,47 +123,55 @@ class Data:
     def findCoOccuranceForSentence(self, sentence, type):
         #the n dimension in matrix of features
         add_feature = False
-        splitted_sentence = []
+        splitted_sentences = []
         number_of_words = self.num_of_words.keys()
         #split the words by '\t'
         for word in sentence:
-            splitted_sentence.append(word.split('\t'))
+            splitted_sentences.append(word.split('\t'))
         #go over the words, each time a target word is selected
-        for target_word in splitted_sentence:
+        for target_word in splitted_sentences:
             if not self.isContentWord(target_word):
                 continue
             target_word_id = target_word[0]
             target_word_is_daughter_id = target_word[6]
-            daughter_stem = splitted_sentence[int(target_word_is_daughter_id)-1][2]
-            daughter_tag = splitted_sentence[int(target_word_is_daughter_id)-1][3]
+            daughter_stem = splitted_sentences[int(target_word_is_daughter_id)-1][2]
+            daughter_tag = splitted_sentences[int(target_word_is_daughter_id)-1][3]
             if daughter_stem in self.content_words_to_ind:
-                feature_child = splitted_sentence[int(target_word_is_daughter_id)-1][1] + ' ' + target_word[7] + ' ' + 'is_daughter'
+                feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][1] + ' ' + target_word[7] + ' ' + 'is_daughter'
                 self.addFeatureType3(feature_child, target_word)
                 # TODO: add a case where the word is preposition
             #elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
                 #print('dauther is a preposition')
 
             #find all other words that are related to the target
-            for ind in range(0, len(splitted_sentence)):
+            for ind in range(0, len(splitted_sentences)):
+                current_sentence = splitted_sentences[ind]
                 #if there is a word in the sentence that has a dependency relation to the target word
-                head = splitted_sentence[ind][6]
+                head = current_sentence[6]
                 if head == target_word_id:
                     if type == 3:
-                        #if the word is a preposition
-                        if splitted_sentence[ind][3] == 'IN' and (splitted_sentence[ind][1].lower()
+                        #if the word is a preposition - case 3.2
+                        if current_sentence[3] == 'IN' and (current_sentence[1].lower()
                                                                   in self.prepsitions or
-                                                                  splitted_sentence[ind][2].lower() in self.prepsitions):
-                            #print('preposition word: ' + splitted_sentence[ind][1])
-                            continue
-                            #add_feature = True #TODO: add the suitable features
+                                                            current_sentence[2].lower() in self.prepsitions):
+                            returned_value = self.findWordPointsToPreposition(current_sentence, splitted_sentences)
+                            if returned_value is None:
+                                #print('case 3.2 - returned value is none!')
+                                continue
+                            else:
+                                feature_parent = returned_value[0] + ' ' + target_word[1] + ' ' + \
+                                                 current_sentence[2] + '-' + returned_value[1]
+                                add_feature = True
                         # if the word's tag is in the list of the words that we are interested in them:
-                        elif self.isContentWord(splitted_sentence[ind][3]):
+                        elif self.isContentWord(current_sentence[3]):
                             #create features for parent
-                            feature_parent = splitted_sentence[ind][1] + ' ' + target_word[7] + ' ' + 'is_parent'
+                            feature_parent = current_sentence[1] + ' ' + target_word[7] + ' ' + 'is_parent'
                             add_feature = True
                         if add_feature:
                             self.addFeatureType3(feature_parent, target_word)
                             add_feature = False
+
+
     def addFeatureType3(self, feature, sentence):
         number_of_words = len(self.num_of_words)
         # if the feature is new - add it and create a vector
