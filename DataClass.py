@@ -33,7 +33,7 @@ class Data:
         self.readData()
         self.countNumOfWords()
         self.filterWords()
-        self.mapContentWordsToInd()
+        #self.mapContentWordsToInd()
 
 
     def readData(self):
@@ -72,7 +72,7 @@ class Data:
                 num_of_Sentence += 1
                 self.findCoOccuranceForSentence(sentence, type)
                 sentence = []
-                print('num of sentence: ' + str(num_of_Sentence))
+                #print('num of sentence: ' + str(num_of_Sentence))
             else:
                 sentence.append(line)
 
@@ -88,12 +88,24 @@ class Data:
             splitted_sentence.append(word.split('\t'))
         #go over the words, each time a target word is selected
         for splitted_word in splitted_sentence:
-            if splitted_word[2] not in self.content_words_to_ind:
+            if splitted_word[3] not in self.content_words_tags:
                 continue
             target_word_id = splitted_word[0]
+            target_word_is_daughter_id = splitted_word[6]
+            daughter_stem = splitted_sentence[int(target_word_is_daughter_id)-1][2]
+            daughter_tag = splitted_sentence[int(target_word_is_daughter_id)-1][3]
+            if daughter_stem in self.content_words_to_ind:
+                feature_child = splitted_sentence[int(target_word_is_daughter_id)-1][1] + ' ' + splitted_word[7] + ' ' + 'is_daughter'
+                self.addFeatureType3(feature_child, splitted_word)
+                # TODO: add a case where the word is preposition
+            elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
+                print('dauther is a preposition')
+
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentence)):
-                if splitted_sentence[ind][6] == target_word_id:
+                #if there is a word in the sentence that has a dependency relation to the target word
+                head = splitted_sentence[ind][6]
+                if head == target_word_id:
                     if type == 3:
                         #if the word is a preposition
                         if splitted_sentence[ind][3] == 'IN' and (splitted_sentence[ind][1].lower()
@@ -102,15 +114,13 @@ class Data:
                             #print('preposition word: ' + splitted_sentence[ind][1])
                             continue
                             #add_feature = True #TODO: add the suitable features
-                        # if the word is in the list of the words that we are interested in them:
-                        elif splitted_sentence[ind][2] in self.num_of_words:
+                        # if the word's tag is in the list of the words that we are interested in them:
+                        elif splitted_sentence[ind][3] in self.content_words_tags:
                             #create features for parent
-                            feature_child =  splitted_sentence[ind][1] + ' ' +splitted_sentence[ind][7] + ' ' + 'child'
-                            #feature_parent = splitted_word[1] + ' ' + splitted_word[7] + ' ' + 'parent'
+                            feature_parent = splitted_sentence[ind][1] + ' ' + splitted_word[7] + ' ' + 'is_parent'
                             add_feature = True
                         if add_feature:
-                            self.addFeatureType3(feature_child, splitted_word)
-                            #self.addFeatureType3(feature_parent, splitted_sentence[ind])
+                            self.addFeatureType3(feature_parent, splitted_word)
                             add_feature = False
     def addFeatureType3(self, feature, sentence):
         number_of_words = len(self.num_of_words)
@@ -122,7 +132,11 @@ class Data:
             # create a zero vecctor, put 1 in the place of the parent word
             # (parent has this feature)
             set_holds_ones_positions = set()
-            word_feature_added_ind = self.content_words_to_ind[sentence[2]]
+            if sentence[1] in self.content_words_to_ind:
+                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
+            else:
+                self.content_words_to_ind[sentence[1]] = len(self.content_words_to_ind)
+                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
             set_holds_ones_positions.add(word_feature_added_ind)
             #vector[word_feature_added_ind] = 1
             self.distributional_vectors_type3.append(set_holds_ones_positions)
@@ -130,7 +144,11 @@ class Data:
         else:
             vector_ind = self.features_type3_ind[feature]
             vector = self.distributional_vectors_type3[vector_ind]
-            word_feature_added_ind = self.content_words_to_ind[sentence[2]]
+            if sentence[1] in self.content_words_to_ind:
+                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
+            else:
+                self.content_words_to_ind[sentence[1]] = len(self.content_words_to_ind)
+                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
             vector.add(word_feature_added_ind)
             #vector[word_feature_added_ind] = 1
             self.distributional_vectors_type3[vector_ind] = vector
