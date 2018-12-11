@@ -73,19 +73,14 @@ class Data:
             return True
         return False
 
-
+    '''
+    handle case 3.1 where the target word points to a preposition -> need to find the head noun that the
+    preposition points to
+    '''
     def findNounPrepositionPointsTo(self, prep_word, sentences):
-        prep_head_ind = int(prep_word[6])
-        stop = False
-        list_of_nouns = ['NN', 'NNS', 'NNP', 'NNPS']
-        while not stop:
-            examined_sentence = sentences[prep_head_ind-1]
-            examined_sentence_tag = examined_sentence[3]
-            #if examined_sentence_tag in list_of_nouns:#TODO finish method
-
-
-    def findWordPointsToPreposition(self, prep_word, sentences):
         prep_word_index = int(prep_word[0])
+        list_of_nouns = ['NN', 'NNS', 'NNP', 'NNPS']
+        root_index = 0
         index = prep_word_index
         stop = False
         # case 3.2 - find the word that the preposition points to and return it with the deprel to the preposition
@@ -93,6 +88,8 @@ class Data:
         while not stop:
             current_sentence_tag = current_sentence[3]
             current_sentence_head = int(current_sentence[6])
+            if current_sentence[7] == 'ROOT':
+                root_index = int(current_sentence[0]-1)
             if current_sentence_head == prep_word_index:
                 #and current_sentence_tag != 'DT'
                 return [current_sentence[1], current_sentence[7]]
@@ -101,6 +98,34 @@ class Data:
                 #current_sentence_head = int(current_sentence[6])
                 current_sentence = sentences[index]
             else:
+                return [sentences[root_index][1], sentences[root_index][7]]
+                #return None
+
+    '''
+        handle case 3.2 where a preposition points to the target word -> need to find the word that points on that
+        preposition and return it with the relation
+        '''
+    def findWordPointsToPreposition(self, prep_word, sentences):
+        prep_word_index = prep_word[0]
+        root_index = 0
+        index = 0
+        stop = False
+        # case 3.2 - find the word that the preposition points to and return it with the deprel to the preposition
+        current_sentence = sentences[index]
+        while not stop:
+            current_sentence_tag = current_sentence[3]
+            current_sentence_head = current_sentence[6]
+            if current_sentence[7] == 'ROOT':
+                root_index = int(current_sentence[0]) - 1
+            if current_sentence_head == prep_word_index and current_sentence_tag != 'DT':
+                return [current_sentence[1], current_sentence[7]]
+            elif index+1 < len(sentences):
+                index += 1
+                #current_sentence_head = int(current_sentence[6])
+                current_sentence = sentences[index]
+            else:
+                return [sentences[root_index][1], sentences[root_index][7]]
+
                 return None
         #return None
 
@@ -140,9 +165,13 @@ class Data:
                 feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][1] + ' ' + target_word[7] + ' ' + 'is_daughter'
                 self.addFeatureType3(feature_child, target_word)
                 # TODO: add a case where the word is preposition
-            #elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
-                #print('dauther is a preposition')
-
+            #case 3.1: target word points to preposition
+            elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
+                returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
+                if returned_value != None:
+                    feature_child = returned_value[0] + ' ' + target_word + ' ' + daughter_stem + \
+                                    '-' + returned_value[1]
+                    self.addFeatureType3(feature_child, target_word)
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentences)):
                 current_sentence = splitted_sentences[ind]
