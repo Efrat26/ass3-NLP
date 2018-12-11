@@ -64,6 +64,17 @@ class Data:
             i += 1
 
 
+    def isContentWord(self, word_properties):
+        if len(word_properties) != 10:
+            return False
+        word_tag = word_properties[3]
+        word_lemma = word_properties[2]
+        if word_tag in self.content_words_tags and word_lemma not in self.function_words_lemma_form:
+            return True
+        return False
+
+
+
     def findCoOccurance(self, type):
         num_of_Sentence = 0
         sentence = []
@@ -87,19 +98,19 @@ class Data:
         for word in sentence:
             splitted_sentence.append(word.split('\t'))
         #go over the words, each time a target word is selected
-        for splitted_word in splitted_sentence:
-            if splitted_word[3] not in self.content_words_tags:
+        for target_word in splitted_sentence:
+            if not self.isContentWord(target_word):
                 continue
-            target_word_id = splitted_word[0]
-            target_word_is_daughter_id = splitted_word[6]
+            target_word_id = target_word[0]
+            target_word_is_daughter_id = target_word[6]
             daughter_stem = splitted_sentence[int(target_word_is_daughter_id)-1][2]
             daughter_tag = splitted_sentence[int(target_word_is_daughter_id)-1][3]
             if daughter_stem in self.content_words_to_ind:
-                feature_child = splitted_sentence[int(target_word_is_daughter_id)-1][1] + ' ' + splitted_word[7] + ' ' + 'is_daughter'
-                self.addFeatureType3(feature_child, splitted_word)
+                feature_child = splitted_sentence[int(target_word_is_daughter_id)-1][1] + ' ' + target_word[7] + ' ' + 'is_daughter'
+                self.addFeatureType3(feature_child, target_word)
                 # TODO: add a case where the word is preposition
-            elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
-                print('dauther is a preposition')
+            #elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
+                #print('dauther is a preposition')
 
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentence)):
@@ -115,12 +126,12 @@ class Data:
                             continue
                             #add_feature = True #TODO: add the suitable features
                         # if the word's tag is in the list of the words that we are interested in them:
-                        elif splitted_sentence[ind][3] in self.content_words_tags:
+                        elif self.isContentWord(splitted_sentence[ind][3]):
                             #create features for parent
-                            feature_parent = splitted_sentence[ind][1] + ' ' + splitted_word[7] + ' ' + 'is_parent'
+                            feature_parent = splitted_sentence[ind][1] + ' ' + target_word[7] + ' ' + 'is_parent'
                             add_feature = True
                         if add_feature:
-                            self.addFeatureType3(feature_parent, splitted_word)
+                            self.addFeatureType3(feature_parent, target_word)
                             add_feature = False
     def addFeatureType3(self, feature, sentence):
         number_of_words = len(self.num_of_words)
