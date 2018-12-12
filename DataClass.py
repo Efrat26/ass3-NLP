@@ -4,6 +4,7 @@ import numpy as np
 
 class Data:
     def __init__(self, fileName):
+        self.temp = 0
         self.linesInFile = []
         self.num_of_words = defaultdict(int)#key is the word as lemma form (stem)
         self.file_name = fileName
@@ -13,18 +14,16 @@ class Data:
         self.function_words_lemma_form = set(['be', 'have', 'do', '\'s', '[', ']'])
         #self.threshold = 1
         self.threshold = 100
-        # distributional vectors where the elements are sets contains the word indices has this feature
-        self.dist_vec_type3_set_of_words_inds_per_feature = {}
-        #mapping between the feature name to the index in the list of features
-        #self.features_type3_ind = {}
-        #mapping between feature to vector
-        self.distributional_vectors_type3 = {}
-        #mapping between each vector to the indcies contained in
-        self.dis_vector_word_ind_type3 = {}
-        #list of features
-        #self.list_of_features_type3 = []
-        self.content_words_to_ind = {}
-        self.feature_to_index_type3 = {}
+        ### for type 3 dist vectors:
+        self.word_to_features_mapping_dict_type3 = {}#key: word, values: features set
+        self.features_to_counters_mapping_type3 = {}#key:feature, value: list with counter for each word has this feature
+        self.features_set = set()
+        self.vector_index_to_word_mapping_dict = {}#key: word as lemma to index (0,1,2...)
+        self.word_to_index_mapping = {}
+
+
+
+
         self.prepsitions = set(['aboard', 'about', 'above','across','after', 'against', 'ahead of',  'along', 'amid',
                                'amidst',  'among', 'around', 'as', 'as far as', 'as of','aside from', 'at',
                                 'athwart', 'atop', 'barring', 'because of', 'before', 'behind',
@@ -41,6 +40,7 @@ class Data:
         self.readData()
         self.countNumOfWords()
         self.filterWords()
+        self.indexWords()
         #self.mapContentWordsToInd()
 
 
@@ -48,7 +48,19 @@ class Data:
         with open(file_name, 'r', encoding="utf8") as f:
             self.linesInFile = f.readlines()
         print("finished reading data")
+
+
+    def indexWords(self):
+        counter = 0
+        for key in self.num_of_words:
+            self.word_to_index_mapping[key] = counter
+            counter += 1
+        print('finished indexing words')
+
+
+
     def countNumOfWords(self):
+
         for line in self.linesInFile:
             spltted_line = line.split('\t')
             # skip empty lines or function words
@@ -79,6 +91,11 @@ class Data:
     def isContentWord(self, word_properties):
         if len(word_properties) != 10:
             return False
+        if word_properties[2] in self.num_of_words:
+            return True
+        else:
+            return False
+
         word_tag = word_properties[3]
         word_lemma = word_properties[2]
         if word_tag in self.content_words_tags and word_lemma not in self.function_words_lemma_form:
@@ -104,13 +121,13 @@ class Data:
                 root_index = int(current_sentence[0])-1
             if current_sentence_head == prep_word_index:
                 #and current_sentence_tag != 'DT'
-                return [current_sentence[1], current_sentence[7]]
+                return [current_sentence[2], current_sentence[7]]
             elif index+1 < len(sentences):
                 index += 1
                 #current_sentence_head = int(current_sentence[6])
                 current_sentence = sentences[index]
             else:
-                return [sentences[root_index][1], sentences[root_index][7]]
+                return [sentences[root_index][2], sentences[root_index][7]]
                 #return None
 
     '''
@@ -130,13 +147,13 @@ class Data:
             if current_sentence[7] == 'ROOT':
                 root_index = int(current_sentence[0]) - 1
             if current_sentence_head == prep_word_index and current_sentence_tag != 'DT':
-                return [current_sentence[1], current_sentence[7]]
+                return [current_sentence[2], current_sentence[7]]
             elif index+1 < len(sentences):
                 index += 1
                 #current_sentence_head = int(current_sentence[6])
                 current_sentence = sentences[index]
             else:
-                return [sentences[root_index][1], sentences[root_index][7]]
+                return [sentences[root_index][2], sentences[root_index][7]]
 
                 return None
         #return None
@@ -154,6 +171,7 @@ class Data:
                 #print('num of sentence: ' + str(num_of_Sentence))
             else:
                 sentence.append(line)
+        print('finished')
 
 
 
@@ -173,14 +191,14 @@ class Data:
             target_word_is_daughter_id = target_word[6]
             daughter_stem = splitted_sentences[int(target_word_is_daughter_id)-1][2]
             daughter_tag = splitted_sentences[int(target_word_is_daughter_id)-1][3]
-            if daughter_stem in self.content_words_to_ind:
-                feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][1] + ' ' + target_word[7] + ' ' + 'is_daughter'
+            if daughter_stem is self.isContentWord(splitted_sentences[int(target_word_is_daughter_id)-1]):
+                feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][2] + ' ' + target_word[7] + ' ' + 'is_daughter'
                 self.addFeatureType3(feature_child, target_word)
             #case 3.1: target word points to preposition
             elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
                 returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
                 if returned_value != None:
-                    feature_child = returned_value[0] + ' ' + target_word[1] + ' ' + daughter_stem + '-' + returned_value[1]
+                    feature_child = returned_value[0] + ' ' + target_word[2] + ' ' + daughter_stem + '-' + returned_value[1]
                     self.addFeatureType3(feature_child, target_word)
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentences)):
@@ -198,13 +216,13 @@ class Data:
                                 #print('case 3.2 - returned value is none!')
                                 continue
                             else:
-                                feature_parent = returned_value[0] + ' ' + target_word[1] + ' ' + \
+                                feature_parent = returned_value[0] + ' ' + target_word[2] + ' ' + \
                                                  current_sentence[2] + '-' + returned_value[1]
                                 add_feature = True
                         # if the word's tag is in the list of the words that we are interested in them:
                         elif self.isContentWord(current_sentence[3]):
                             #create features for parent
-                            feature_parent = current_sentence[1] + ' ' + target_word[7] + ' ' + 'is_parent'
+                            feature_parent = current_sentence[2] + ' ' + target_word[7] + ' ' + 'is_parent'
                             add_feature = True
                         if add_feature:
                             self.addFeatureType3(feature_parent, target_word)
@@ -212,66 +230,33 @@ class Data:
 
 
     def addFeatureType3(self, feature, sentence):
-        number_of_words = len(self.num_of_words)
-        # if the feature is new - add it and create a vector
-        if feature not in self.feature_to_index_type3:
-            self.feature_to_index_type3[feature] = float(len(self.feature_to_index_type3))
-            feature_as_index = self.feature_to_index_type3[feature]
-            # add to list, put the index in the the dictionary & create a vector
-            #self.list_of_features_type3.append(feature)
-            #self.features_type3_ind[feature] = len(self.list_of_features_type3) - 1
-            # create a zero vecctor, put 1 in the place of the parent word
-            # (parent has this feature)
-            set_holds_ones_positions = set()
-            dist_vector = []
-            vector_to_word_map = {}
-            if sentence[1] in self.content_words_to_ind:
-                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
-            else:
-                self.content_words_to_ind[sentence[1]] = len(self.content_words_to_ind)
-                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
-            #adding to set the word index
-            set_holds_ones_positions.add(word_feature_added_ind)
-            #adding a mapping that from the first word in this feature to the index
-            vector_to_word_map[word_feature_added_ind] = 0
-            #adding 1 for the counter to the word with this context
-            dist_vector.append(1)
-            #vector[word_feature_added_ind] = 1
-            self.dist_vec_type3_set_of_words_inds_per_feature[feature_as_index] = set_holds_ones_positions
-            self.distributional_vectors_type3[feature_as_index] = dist_vector
-            self.dis_vector_word_ind_type3[feature_as_index] = vector_to_word_map
-        # if already exists - then put 1 in the feature vector in the place of the word
+        #check if we have the feature already or not
+        target_word_as_lemma = sentence[2]
+        if feature in self.features_set:
+            self.checkIfTargetWordHasFeature(target_word_as_lemma, feature)
+
+        #we don't have the feature
         else:
-            feature_as_index = self.feature_to_index_type3[feature]
-            #gettign the feature index
-            #vector_ind = self.features_type3_ind[feature]
-            #getting the set of words that include this feature
-            set_of_words_with_feature = self.dist_vec_type3_set_of_words_inds_per_feature[feature_as_index]
-            #getting the dis vector
-            dist_vec = self.distributional_vectors_type3[feature_as_index]
-            #getting the mapping from vector ind to word ind
-            mapping_from_ind_to_word = self.dis_vector_word_ind_type3[feature_as_index]
-            if sentence[1] in self.content_words_to_ind:
-                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
-            else:
-                self.content_words_to_ind[sentence[1]] = len(self.content_words_to_ind)
-                word_feature_added_ind = self.content_words_to_ind[sentence[1]]
-            #if word already was with this context
-            if word_feature_added_ind in set_of_words_with_feature:
-                word_ind_in_vec = mapping_from_ind_to_word[word_feature_added_ind]
-                #add 1 to counter
-                dist_vec[word_ind_in_vec] += 1
-            else:
-                #adding mapping of the word
-                mapping_from_ind_to_word[word_feature_added_ind] = len(set_of_words_with_feature)
-                self.dis_vector_word_ind_type3[feature_as_index] = mapping_from_ind_to_word
-                #add word to set
-                set_of_words_with_feature.add(word_feature_added_ind)
-                self.dist_vec_type3_set_of_words_inds_per_feature[feature_as_index] = set_of_words_with_feature
-                #add 1 to dist vecor
-                dist_vec.insert(mapping_from_ind_to_word[word_feature_added_ind], 1)
-            #vector[word_feature_added_ind] = 1
-            self.distributional_vectors_type3[feature_as_index] = dist_vec
+            self.checkIfTargetWordHasFeature(target_word_as_lemma, feature)
+            #create new dist vect
+            new_vec = []
+            #add 1 to the counter for the target word
+            new_vec.append(1)
+
+
+
+    def checkIfTargetWordHasFeature(self, target_word_as_lemma, feature):
+        has_feature = False
+
+        if target_word_as_lemma in self.word_to_features_mapping_dict_type3:
+            if feature in self.word_to_features_mapping_dict_type3[target_word_as_lemma]:
+                has_feature = True
+            self.word_to_features_mapping_dict_type3[target_word_as_lemma].add(feature)
+        else:
+            features = set()
+            features.add(feature)
+            self.word_to_features_mapping_dict_type3[target_word_as_lemma] = features
+        return has_feature
 
 
 if __name__ == '__main__':
