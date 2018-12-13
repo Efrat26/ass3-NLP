@@ -14,15 +14,12 @@ class Data:
         self.function_words_lemma_form = set(['be', 'have', 'do', '\'s', '[', ']'])
         #self.threshold = 1
         self.threshold = 100
-        ### for type 3 dist vectors:
-        self.word_to_features_mapping_dict_type3 = {}#key: word, values: features set
-        self.features_to_counters_mapping_type3 = {}#key:feature, value: list with counter for each word has this feature
-        self.features_set = set()
-        self.vector_index_to_word_mapping_dict = {}#key: word as lemma to index (0,1,2...)
         self.word_to_index_mapping = {}
-
-
-
+        ##simple start
+        ### for type 3 dist vectors:
+        self.word_to_dist_vec_type3 = {}
+        self.word_to_set_of_features = {}
+        self.feature_to_word_type3 = {}
 
         self.prepsitions = set(['aboard', 'about', 'above','across','after', 'against', 'ahead of',  'along', 'amid',
                                'amidst',  'among', 'around', 'as', 'as far as', 'as of','aside from', 'at',
@@ -230,7 +227,55 @@ class Data:
 
 
     def addFeatureType3(self, feature, sentence):
-        #check if we have the feature already or not
+        word_lemma = sentence[2]
+        if feature in self.feature_to_word_type3:
+            set_of_words = self.feature_to_word_type3[feature]
+            set_of_words.add(word_lemma)
+            self.feature_to_word_type3[feature] = set_of_words
+        else:
+            set_of_words = set()
+            set_of_words.add(word_lemma)
+            self.feature_to_word_type3[feature] = set_of_words
+        if word_lemma in self.word_to_dist_vec_type3:
+            dist_vec = self.word_to_dist_vec_type3[word_lemma]
+            set_of_features = self.word_to_set_of_features[word_lemma]
+            if feature in set_of_features:
+                for i in range(0,len(dist_vec)):
+                    current_pair_feature_counter = dist_vec[i]
+                    if feature == current_pair_feature_counter[0]:
+                        dist_vec[i][1] += 1
+                        self.word_to_dist_vec_type3[word_lemma] = dist_vec
+                        set_of_features.add(feature)
+                        self.word_to_set_of_features[word_lemma] = set_of_features
+                        return
+            else:
+            #if for ended and the feature wasn't found, means we need to create a new pair for it
+                set_of_features.add(feature)
+                self.word_to_set_of_features[word_lemma] = set_of_features
+                new_feature_counter_pair = [feature, 1]
+                dist_vec.append(new_feature_counter_pair)
+                self.word_to_dist_vec_type3[word_lemma] = dist_vec
+                return
+        #word not in dictionary - need to add it
+        else:
+            dist_vec= []
+            new_feature_counter_pair = [feature, 1]
+            dist_vec.append(new_feature_counter_pair)
+            self.word_to_dist_vec_type3[word_lemma] = dist_vec
+            set_of_features = set()
+            set_of_features.add(feature)
+            self.word_to_set_of_features[word_lemma] = set_of_features
+
+            return
+
+
+
+
+
+
+
+''''
+#check if we have the feature already or not
         target_word_as_lemma = sentence[2]
         if feature in self.features_set:
             self.checkIfTargetWordHasFeature(target_word_as_lemma, feature)
@@ -244,7 +289,6 @@ class Data:
             new_vec.append(1)
 
 
-
     def checkIfTargetWordHasFeature(self, target_word_as_lemma, feature):
         has_feature = False
 
@@ -256,8 +300,9 @@ class Data:
             features = set()
             features.add(feature)
             self.word_to_features_mapping_dict_type3[target_word_as_lemma] = features
+            
         return has_feature
-
+'''
 
 if __name__ == '__main__':
     #create data class
