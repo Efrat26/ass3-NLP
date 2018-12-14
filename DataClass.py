@@ -2,12 +2,10 @@ import sys
 from collections import defaultdict
 import numpy as np
 
-class Feature:
-    def __init__(self, index):
-        self.wordIndex = index
-        self.count = 1
 class Data:
     def __init__(self, fileName):
+        self.targetWords = ["car", "bus", "hospital", "hotel", "gun", "bomb", "horse", "fox", "table", "bowl", "guitar", "piano"]
+        self.targetWordsIndex = []
         self.temp = 0
         self.linesInFile = []
         self.num_of_words = defaultdict(int)  # key is the word as lemma form (stem)
@@ -48,6 +46,7 @@ class Data:
         self.countNumOfWords()
         self.filterWords()
         self.indexWords()
+        self.convertTargetWordsToIndex()
         # self.mapContentWordsToInd()
 
     def readData(self):
@@ -102,6 +101,10 @@ class Data:
             return True
         return False
 
+    def convertTargetWordsToIndex(self):
+        for word in self.targetWords:
+            index = self.word_to_index_mapping[word]
+            self.targetWordsIndex.appen(index)
     '''
     handle case 3.1 where the target word points to a preposition -> need to find the head noun that the
     preposition points to
@@ -310,6 +313,8 @@ class Data:
             self.word_to_set_of_features[word_lemma] = set_of_features
 
             return
+
+
 
 
 ''''
