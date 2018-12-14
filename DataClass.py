@@ -296,18 +296,51 @@ class Data:
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
         for key in self.word_to_dist_vec_type3:
-            number_of_co_occ_observed_in_corpus += len(self.word_to_dist_vec_type3[key])
-        number_of_co_occ_observed_in_corpus *= 2
+            list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[key]
+            for i in range(0, len(list_of_dist_vecs_for_word)):
+                number_of_co_occ_observed_in_corpus += list_of_dist_vecs_for_word[i][1]
+        #number_of_co_occ_observed_in_corpus *= 2
+        if number_of_co_occ_observed_in_corpus == 0:
+            print("number of co-occurances is zero!")
+            return
+        else:
+            print("total co-occ is " + str(number_of_co_occ_observed_in_corpus))
+        for feature in self.feature_to_word_type3:
+            list_of_words_has_feature = self.feature_to_word_type3[feature]
+            #print(list_of_words_has_feature)
+            counter = 0
+            for word_with_feature in list_of_words_has_feature:
+              #  print("word with feature is: " + word_with_feature)
+                word_to_features_index_dict = self.word_to_feature_to_index_dict_type3[word_with_feature]
+                index = word_to_features_index_dict[feature]
+               # print("index is: " + str(index))
+                dist_vec = self.word_to_dist_vec_type3[word_with_feature]
+                counter += dist_vec[index][1]
+               # print("counter is: " + str(counter))
+            result = format(counter / number_of_co_occ_observed_in_corpus, '.8f')
+           # print(str(result))
+            self.pmi_att_type3[feature] = result
+            # sanity check
+        sanity_check_sum_of_features_probabilities = 0
+        for feature in self.feature_to_word_type3:
+            sanity_check_sum_of_features_probabilities += self.feature_to_word_type3[feature]
+
+        print("sainty check: sum of probabilities for words " + str(sanity_check_sum_of_features_probabilities))
         # calculate p(word)
         for word in self.word_to_set_of_features:
-            self.pmi_word_type3[word] = len(self.word_to_set_of_features[word]) / number_of_co_occ_observed_in_corpus
-        #calculate p(att)
-        for feature in self.feature_to_word_type3:
-            self.pmi_att_type3[feature] = len(self.feature_to_word_type3[feature]) / number_of_co_occ_observed_in_corpus
+            list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[word]
+            counter = 0
+            for i in range(0,len(list_of_dist_vecs_for_word)):
+                counter += list_of_dist_vecs_for_word[i][1]
+            self.pmi_word_type3[word] = counter / number_of_co_occ_observed_in_corpus
 
+        #sainty check
+        sanity_check_sum_of_words_probabilities = 0
+        for word in self.pmi_word_type3:
+            sanity_check_sum_of_words_probabilities += self.pmi_word_type3[word]
+        print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
         #calculate p(word, att)
 
-        print('yay')
 
 if __name__ == '__main__':
     #create data class
@@ -316,4 +349,4 @@ if __name__ == '__main__':
         file_name = sys.argv[1]
     data_object = Data(file_name)
     data_object.findCoOccurance(3)
-    #data_object.createPMIvectors()
+    data_object.createPMIvectors()
