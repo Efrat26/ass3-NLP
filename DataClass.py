@@ -17,7 +17,7 @@ class Data:
         # tags of content words based on penn tree bank tagset, we mostly chose the tags of nouns, verbs and adjectives
         self.content_words_tags = set(['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'RB', 'RBR', 'RBS', 'VB',
                                       'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'])
-        self.function_words_lemma_form = set(['be', 'have', 'do', '\'s', '[', ']'])
+        self.function_words_lemma_form = set(['be', 'have', 'do', '\'s', '[', ']', 'either', 'or', 'and'])
         #self.threshold = 1
         self.threshold = 100
         self.word_to_index_mapping = {}
