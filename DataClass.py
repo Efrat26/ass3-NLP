@@ -292,48 +292,6 @@ class Data:
 
             return
 
-
-    def computeProbWordAtt(self, word, att):
-        result = 0.0
-        if att in self.word_to_set_of_features[word]:
-            feature_to_ind_dict = self.word_to_feature_to_index_dict_type3[word]
-            index_in_dist_vec = feature_to_ind_dict[att]
-            dist_vec = self.word_to_dist_vec_type3[word]
-            result = dist_vec[index_in_dist_vec][1]
-            result = result / self.total_co_occ
-        return result
-
-    def calculateProbAtt(self, feature):
-        counter = 0
-        list_of_words_has_feature = self.feature_to_word_type3[feature]
-        # print(list_of_words_has_feature)
-
-        for word_with_feature in list_of_words_has_feature:
-            #  print("word with feature is: " + word_with_feature)
-            word_to_features_index_dict = self.word_to_feature_to_index_dict_type3[word_with_feature]
-            index = word_to_features_index_dict[feature]
-            # print("index is: " + str(index))
-            dist_vec = self.word_to_dist_vec_type3[word_with_feature]
-            counter += dist_vec[index][1]
-        result = float(counter) / float(self.total_co_occ)
-        return result
-
-
-        ''''
-        print(str(counter))
-        # self.pmi_att_type3[feature] = counter
-        # print("counter is: " + str(counter))
-        # result = format(counter / number_of_co_occ_observed_in_corpus, '.8f')
-        # print(str(result))
-        # self.pmi_att_type3[feature] = result
-
-        # sanity check
-        sanity_check_sum_of_features_probabilities = 0
-        for feature in self.feature_to_word_type3:
-            sanity_check_sum_of_features_probabilities += self.feature_to_word_type3[feature]
-
-        print("sainty check: sum of probabilities for words " + str(sanity_check_sum_of_features_probabilities))
-        '''
     def createPMIvectors(self):
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
@@ -385,35 +343,24 @@ class Data:
         print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
 
         #calculate p(word,att)
-        
+        for word in self.word_to_dist_vec_type3:
+            pmi_vec = []
+            dist_vec = self.word_to_dist_vec_type3[word]
+            for att in dist_vec:
+                p_att_word = att[1] / number_of_co_occ_observed_in_corpus
+                pair = [att[0], p_att_word]
+                pmi_vec.append(pair)
+            self.pmi_word_att_type3[word] = pmi_vec
+        #sanity check
+        counter = 0
+        for word in self.pmi_word_att_type3:
+            pmi_vec = self.pmi_word_att_type3[word]
+            for pair in pmi_vec:
+                counter += pair[1]
+        print("sanity check for sigma on word,att result is: " + str(counter))
 
 
-    def computePmi(self,param1, param2):
-        word = ''
-        att = ''
-        result = 0.0
-        if param1 in self.feature_to_word_type3 and param2 in self.word_to_set_of_features:
-            word = param2
-            att = param1
-        elif param2 in self.feature_to_word_type3 and param1 in self.word_to_set_of_features:
-            word = param1
-            att = param2
-        else:
-            return result
-        p_word = self.pmi_word_type3[word]
-        p_att = self.calculateProbAtt(att)
-        p_word_att = self.computeProbWordAtt(word, att)
-        if(p_word == 0 or p_att == 0):
-            return result
-        print("p_word_att=" + str(p_word_att) +", p_att=" + str(p_att) + ", p_word=" + str(p_word))
-        result = p_word_att / (p_att * p_word)
-        print("result before lo is: "+ str(result))
-        if result <= 0:
-            return 0.0
-        result = math.log(result)
-        return result
-
-
+   # def computePmi(self,param1, param2):
 
 
 if __name__ == '__main__':
@@ -424,6 +371,6 @@ if __name__ == '__main__':
     data_object = Data(file_name)
     data_object.findCoOccurance(3)
     data_object.createPMIvectors()
-    print("result from 'fly' 'britain fly from-adpobj' is: " + str(data_object.computePmi('fly', 'britain fly from-adpobj')))
-    print("result from 'britain fly from-adpobj' 'fly' is: " + str(
-        data_object.computePmi('britain fly from-adpobj', 'fly')))
+    #print("result from 'fly' 'britain fly from-adpobj' is: " + str(data_object.computePmi('fly', 'britain fly from-adpobj')))
+    #print("result from 'britain fly from-adpobj' 'fly' is: " + str(
+       # data_object.computePmi('britain fly from-adpobj', 'fly')))
