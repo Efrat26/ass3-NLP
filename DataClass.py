@@ -1,6 +1,6 @@
 import sys
 from collections import defaultdict
-import numpy as np
+import math
 
 class Data:
     def __init__(self, fileName):
@@ -27,6 +27,7 @@ class Data:
         self.pmi_word_type3 = {}
         self.pmi_att_type3 = {}
         self.pmi_word_att_type3 = {}
+        self.total_co_occ = 0
 
         self.prepsitions = set(['aboard', 'about', 'above','across','after', 'against', 'ahead of',  'along', 'amid',
                                'amidst',  'among', 'around', 'as', 'as far as', 'as of','aside from', 'at',
@@ -292,7 +293,17 @@ class Data:
             return
 
 
-    def calculateProbAtt(self, feature, total_co_occ):
+    def computeProbWordAtt(self, word, att):
+        result = 0.0
+        if att in self.word_to_set_of_features[word]:
+            feature_to_ind_dict = self.word_to_feature_to_index_dict_type3[word]
+            index_in_dist_vec = feature_to_ind_dict[att]
+            dist_vec = self.word_to_dist_vec_type3[word]
+            result = dist_vec[index_in_dist_vec][1]
+            result = result / self.total_co_occ
+        return result
+
+    def calculateProbAtt(self, feature):
         counter = 0
         list_of_words_has_feature = self.feature_to_word_type3[feature]
         # print(list_of_words_has_feature)
@@ -304,8 +315,10 @@ class Data:
             # print("index is: " + str(index))
             dist_vec = self.word_to_dist_vec_type3[word_with_feature]
             counter += dist_vec[index][1]
-        result = float(counter) / float(total_co_occ)
+        result = float(counter) / float(self.total_co_occ)
         return result
+
+
         ''''
         print(str(counter))
         # self.pmi_att_type3[feature] = counter
@@ -334,6 +347,7 @@ class Data:
             return
         else:
             print("total co-occ is " + str(number_of_co_occ_observed_in_corpus))
+            self.total_co_occ = number_of_co_occ_observed_in_corpus
 
         # calculate p(word)
         for word in self.word_to_set_of_features:
@@ -348,7 +362,34 @@ class Data:
         for word in self.pmi_word_type3:
             sanity_check_sum_of_words_probabilities += self.pmi_word_type3[word]
         print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
-        #calculate p(word, att)
+
+
+    def computePmi(self,param1, param2):
+        word = ''
+        att = ''
+        result = 0.0
+        if param1 in self.feature_to_word_type3 and param2 in self.word_to_set_of_features:
+            word = param2
+            att = param1
+        elif param2 in self.feature_to_word_type3 and param1 in self.word_to_set_of_features:
+            word = param1
+            att = param2
+        else:
+            return result
+        p_word = self.pmi_word_type3[word]
+        p_att = self.calculateProbAtt(att)
+        p_word_att = self.computeProbWordAtt(word, att)
+        if(p_word == 0 or p_att == 0):
+            return result
+        print("p_word_att=" + str(p_word_att) +", p_att=" + str(p_att) + ", p_word=" + str(p_word))
+        result = p_word_att / (p_att * p_word)
+        print("result before lo is: "+ str(result))
+        if result <= 0:
+            return 0.0
+        result = math.log(result)
+        return result
+
+
 
 
 if __name__ == '__main__':
@@ -359,3 +400,6 @@ if __name__ == '__main__':
     data_object = Data(file_name)
     data_object.findCoOccurance(3)
     data_object.createPMIvectors()
+    print("result from 'fly' 'britain fly from-adpobj' is: " + str(data_object.computePmi('fly', 'britain fly from-adpobj')))
+    print("result from 'britain fly from-adpobj' 'fly' is: " + str(
+        data_object.computePmi('britain fly from-adpobj', 'fly')))
