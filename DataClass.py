@@ -1,6 +1,11 @@
 import sys
 from collections import defaultdict
+import numpy as np
 import math
+class Feature:
+    def __init__(self, index):
+        self.wordIndex = index
+        self.count = 1
 
 class Data:
     def __init__(self, fileName):
@@ -28,6 +33,12 @@ class Data:
         self.pmi_att_type3 = {}
         self.pmi_word_att_type3 = {}
         self.total_co_occ = 0
+        # to use less memory PMI vectors include only the values and not a pair of <feature, value>. the order
+        #of the features is the same as in the distributional vectors
+        self.word_to_pmi_vec = {}
+
+        ### for type 1 & 2 dist vectors:
+        self.feature_to_word = {}
 
         self.prepsitions = set(['aboard', 'about', 'above','across','after', 'against', 'ahead of',  'along', 'amid',
                                'amidst',  'among', 'around', 'as', 'as far as', 'as of','aside from', 'at',
@@ -171,13 +182,19 @@ class Data:
         for line in self.linesInFile:
             if line == '\n':
                 num_of_Sentence += 1
-                self.findCoOccuranceForSentence(sentence, type)
+                if type == 3:
+                    self.findCoOccuranceForSentence(sentence, type)
+                elif type == 2:
+                    self.findCoOccuranceForSentence2(sentence, type)
+                elif type == 1:
+                    self.findCoOccuranceForSentence1(sentence, type)
                 sentence = []
                 #print('num of sentence: ' + str(num_of_Sentence))
             else:
                 sentence.append(line)
         print('finished')
-        print('number of features is: ' + str(len(self.feature_to_word_type3)))
+        if type == 3:
+            print('number of features is: ' + str(len(self.feature_to_word_type3)))
 
 
 
@@ -292,6 +309,46 @@ class Data:
 
             return
 
+    def findCoOccuranceForSentence2(self, sentence, type):
+        for idx1, w1 in enumerate(sentence):
+            word1 = w1.rstrip().split('\t')
+            index1 = self.word_to_index_mapping[word1[2]]
+            for idx2, w2 in enumerate(sentence):
+                if (idx1 == idx2): continue
+                word2 = w2.rstrip().split('\t')
+                index2 = self.word_to_index_mapping[word2[2]]
+                if (index1 not in self.word_to_set_of_features):
+                    self.word_to_set_of_features[index1] = defaultdict(int)
+                if (index2 not in self.feature_to_word):
+                    self.feature_to_word[index2] = {index1}
+                else:
+                    self.feature_to_word[index2].add(index1)
+                self.word_to_set_of_features[index1][index2] += 1
+
+    def findCoOccuranceForSentence1(self, sentence, type):
+        sentenceIndex = []
+        for w in (sentence):
+            word = w.rstrip().split('\t')
+            sentenceIndex.append(self.word_to_index_mapping[word[2]])
+            for idx, currIndexWord in enumerate(sentenceIndex):
+                window = self.getWordInWindow(sentenceIndex, idx)
+                if (currIndexWord not in self.word_to_set_of_features):
+                    self.word_to_set_of_features[currIndexWord] = defaultdict(int)
+                for windowWord in window:
+                    if (windowWord not in self.feature_to_word):
+                        self.feature_to_word[windowWord] = {currIndexWord}
+                    else:
+                        self.feature_to_word[windowWord].add(currIndexWord)
+                    self.word_to_set_of_features[currIndexWord][windowWord] += 1
+
+    def getWordInWindow(self, arr, index):
+        windowWord = []
+        length = len(arr)
+        for x in range(index - 2, index + 2):
+            if (x > 0 and x < length):
+                windowWord.append(arr[x])
+        return windowWord
+
     def createPMIvectors(self):
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
@@ -341,8 +398,8 @@ class Data:
         for word in self.pmi_word_type3:
             sanity_check_sum_of_words_probabilities += self.pmi_word_type3[word]
         print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
-
-        #calculate p(word,att)
+        counter = 0
+        #calculate p(word,att) & pmi vector (includes the sanity check counter)
         for word in self.word_to_dist_vec_type3:
             pmi_vec = []
             dist_vec = self.word_to_dist_vec_type3[word]
@@ -350,17 +407,74 @@ class Data:
                 p_att_word = att[1] / number_of_co_occ_observed_in_corpus
                 pair = [att[0], p_att_word]
                 pmi_vec.append(pair)
+                counter += pair[1]
             self.pmi_word_att_type3[word] = pmi_vec
         #sanity check
-        counter = 0
-        for word in self.pmi_word_att_type3:
-            pmi_vec = self.pmi_word_att_type3[word]
-            for pair in pmi_vec:
-                counter += pair[1]
         print("sanity check for sigma on word,att result is: " + str(counter))
 
+        #create PMI vector
+        for word in self.pmi_word_att_type3:
+            caculated_pmi_pair = []
+            pmi_vec = self.pmi_word_att_type3[word]
+            for i in range(0, len(pmi_vec)):
+                current_pair = pmi_vec[i]
+                p_att = self.pmi_att_type3[current_pair[0]]
+                p_word = self.pmi_word_type3[word]
+                p_att_word = current_pair[1]
+                if p_att == 0 or p_word == 0:
+                    result = 0.0
+                elif p_att_word == 0:
+                    result = 0.0
+                else:
+                    temp1 = p_att_word / (p_word * p_att)
+                    temp2 = math.log(temp1)
+                    #print(str(temp2))
+                    new_temp2 = format(temp2, '.3f')
+                    result = new_temp2
+                caculated_pmi_pair.append(result)
+            self.word_to_pmi_vec[word] = caculated_pmi_pair
 
-   # def computePmi(self,param1, param2):
+
+
+
+    def computePmi(self,param1, param2):
+        word = ''
+        att = ''
+        result = 0.0
+        if param1 in self.feature_to_word_type3 and param2 in self.word_to_set_of_features:
+            word = param2
+            att = param1
+        elif param2 in self.feature_to_word_type3 and param1 in self.word_to_set_of_features:
+            word = param1
+            att = param2
+        else:
+            return result
+        if att in self.word_to_set_of_features[word]:
+            pmi_vec = self.word_to_pmi_vec[word]
+            index_dict = self.word_to_feature_to_index_dict_type3[word]
+            index = index_dict[att]
+            result = pmi_vec[index]
+        return result
+
+    def cosine(self, u, v):
+        dot_product = np.dot(u, v)
+        norm_u = np.linalg.norm(u)
+        norm_v = np.linalg.norm(v)
+        return dot_product / (norm_u * norm_v)
+
+    def cosineDistance(self, currIndex, indexArr):
+        dist = {}
+        targrtIndex = self.word_to_set_of_features[currIndex]
+        for index in indexArr:
+            currIndex = self.word_to_set_of_features[index]
+
+            setAtt = list(set(targrtIndex.keys()) & set(currIndex.keys()))
+            targrtVec = [targrtIndex[x] for x in setAtt]
+            currVec = [currIndex[x] for x in setAtt]
+            d = self.cosine(targrtVec, currVec)
+            dist[index] = d
+        print(dist)
+
 
 
 if __name__ == '__main__':
@@ -369,8 +483,10 @@ if __name__ == '__main__':
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
     data_object = Data(file_name)
-    data_object.findCoOccurance(3)
+    data_object.findCoOccurance(1)
+    ''''
     data_object.createPMIvectors()
-    #print("result from 'fly' 'britain fly from-adpobj' is: " + str(data_object.computePmi('fly', 'britain fly from-adpobj')))
-    #print("result from 'britain fly from-adpobj' 'fly' is: " + str(
-       # data_object.computePmi('britain fly from-adpobj', 'fly')))
+    print("result from 'fly' 'britain fly from-adpobj' is: " + str(data_object.computePmi('fly', 'britain from-adpobj')))
+    print("result from 'britain fly from-adpobj' 'fly' is: " + str(
+        data_object.computePmi('britain from-adpobj', 'fly')))
+'''
