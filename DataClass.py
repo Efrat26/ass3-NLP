@@ -2,6 +2,7 @@ import sys
 from collections import defaultdict
 import numpy as np
 import math
+import heapq
 class Feature:
     def __init__(self, index):
         self.wordIndex = index
@@ -456,37 +457,89 @@ class Data:
             result = pmi_vec[index]
         return result
 
-    def cosine(self, u, v):
-        dot_product = np.dot(u, v)
-        norm_u = np.linalg.norm(u)
-        norm_v = np.linalg.norm(v)
+    def cosine(self, u_common, v_common, u_full, v_full):
+        u_common= np.array(u_common, dtype=float)
+        v_common = np.array(v_common, dtype=float)
+        dot_product = np.dot(u_common, v_common)
+        u_full = np.array(u_full, dtype=float)
+        v_full = np.array(v_full, dtype=float)
+        norm_u = np.linalg.norm(u_full)
+        norm_v = np.linalg.norm(v_full)
         return dot_product / (norm_u * norm_v)
 
-    def cosineDistance(self, currIndex, indexArr):
-        dist = {}
-        targrtIndex = self.word_to_set_of_features[currIndex]
-        for index in indexArr:
-            currIndex = self.word_to_set_of_features[index]
+    def cosineDistance(self, target_word):
+        dist = []
+        words = []
+        top_words = []
+        top_vals = []
+        for word in self.word_to_pmi_vec:
+            if word == target_word:
+                continue
+            returned_value = self.getPmiVecOrderedByCommonAttributes(target_word, word)
+            cosine_val = self.cosine(returned_value[0], returned_value[1], returned_value[2], returned_value[3])
+            dist.append(cosine_val)
+            words.append(word)
+        #get top 20
+        min_val_index = 0
+        min_val_value = np.NINF
+        for i in range(0, len(dist)):
+            if top_vals.__len__() < 20:
+                top_vals.append(dist[0])
+                top_words.append(words[0])
+                if dist[0] < min_val_value:
+                    min_val_value = dist[0]
+                    min_val_index = top_vals.__len__() - 1
+                dist.pop(0)
+                words.pop(0)
+            else:
+                if dist[0] > min_val_value:
+                    top_vals.pop(min_val_index)
+                    top_words.pop(min_val_index)
+                    top_vals.append(dist[0])
+                    top_words.append(words[0])
+                    min_val_index = top_vals.index(min(top_vals))
+                    min_val_value = top_vals[min_val_index]
+                dist.pop(0)
+                words.pop(0)
 
-            setAtt = list(set(targrtIndex.keys()) & set(currIndex.keys()))
-            targrtVec = [targrtIndex[x] for x in setAtt]
-            currVec = [currIndex[x] for x in setAtt]
-            d = self.cosine(targrtVec, currVec)
-            dist[index] = d
-        print(dist)
+        return top_words
+
+
+
+    def getPmiVecOrderedByCommonAttributes(self, word1, word2):
+        set_attributes_for_word1 = self.word_to_set_of_features[word1]
+        set_attributes_for_word2 = self.word_to_set_of_features[word2]
+        pmi_vec_word1 = []
+        pmi_vec_word2 = []
+        pmi_vec_word1_all_attributes = []
+        pmi_vec_word2_all_attributes = []
+        full_pmi_vec_word1 = self.word_to_pmi_vec[word1]
+        full_pmi_vec_word2 = self.word_to_pmi_vec[word2]
+        index_dict_word1 = self.word_to_feature_to_index_dict_type3[word1]
+        index_dict_word2 = self.word_to_feature_to_index_dict_type3[word2]
+        for feature_word1 in set_attributes_for_word1:
+            pmi_vec_word1_all_attributes.append(full_pmi_vec_word1[index_dict_word1[feature_word1]])
+            if feature_word1 not in set_attributes_for_word2:
+                continue
+            pmi_vec_word1.append(full_pmi_vec_word1[index_dict_word1[feature_word1]])
+            pmi_vec_word2.append(full_pmi_vec_word2[index_dict_word2[feature_word1]])
+        for feature_word2 in set_attributes_for_word2:
+            pmi_vec_word2_all_attributes.append(full_pmi_vec_word2[index_dict_word2[feature_word2]])
+
+        return [pmi_vec_word1, pmi_vec_word2, pmi_vec_word1_all_attributes, pmi_vec_word2_all_attributes]
 
 
 
 if __name__ == '__main__':
+    #
+    target_words = ['car', 'bus', 'hospital', 'hotel', 'gun', 'bomb', 'horse', 'fox', 'table', 'bowl', 'guitar','piano']
     #create data class
     file_name = 'wikipedia_sample_trees_lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
     data_object = Data(file_name)
-    data_object.findCoOccurance(1)
-    ''''
+    data_object.findCoOccurance(3)
+
     data_object.createPMIvectors()
-    print("result from 'fly' 'britain fly from-adpobj' is: " + str(data_object.computePmi('fly', 'britain from-adpobj')))
-    print("result from 'britain fly from-adpobj' 'fly' is: " + str(
-        data_object.computePmi('britain from-adpobj', 'fly')))
-'''
+    words = data_object.cosineDistance(target_words[0])
+    print("top words for target word: " + target_words[0] + " are: " + ','.join(words))
