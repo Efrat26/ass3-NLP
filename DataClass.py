@@ -198,13 +198,13 @@ class Data:
             daughter_stem = splitted_sentences[int(target_word_is_daughter_id)-1][2]
             daughter_tag = splitted_sentences[int(target_word_is_daughter_id)-1][3]
             if daughter_stem is self.isContentWord(splitted_sentences[int(target_word_is_daughter_id)-1]):
-                feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][2] + ' ' + target_word[7] + ' ' + 'is_daughter'
+                feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][2] +  ' ' + 'is_daughter'
                 self.addFeatureType3(feature_child, target_word)
             #case 3.1: target word points to preposition
             elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
                 returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
                 if returned_value != None:
-                    feature_child = returned_value[0] + ' ' + target_word[2] + ' ' + daughter_stem + '-' + returned_value[1]
+                    feature_child = returned_value[0] + ' ' + daughter_stem + '-' + returned_value[1]
                     self.addFeatureType3(feature_child, target_word)
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentences)):
@@ -222,13 +222,13 @@ class Data:
                                 #print('case 3.2 - returned value is none!')
                                 continue
                             else:
-                                feature_parent = returned_value[0] + ' ' + target_word[2] + ' ' + \
+                                feature_parent = returned_value[0] + ' ' + \
                                                  current_sentence[2] + '-' + returned_value[1]
                                 add_feature = True
                         # if the word's tag is in the list of the words that we are interested in them:
                         elif self.isContentWord(current_sentence[3]):
                             #create features for parent
-                            feature_parent = current_sentence[2] + ' ' + target_word[7] + ' ' + 'is_parent'
+                            feature_parent = current_sentence[2] + ' ' + 'is_parent'
                             add_feature = True
                         if add_feature:
                             self.addFeatureType3(feature_parent, target_word)
@@ -349,6 +349,27 @@ class Data:
             print("total co-occ is " + str(number_of_co_occ_observed_in_corpus))
             self.total_co_occ = number_of_co_occ_observed_in_corpus
 
+        for feature in self.feature_to_word_type3:
+            list_of_words_has_feature = self.feature_to_word_type3[feature]
+            # print(list_of_words_has_feature)
+            #print("feature is: " + feature)
+            #print("set of words with this feature: " + ' '.join(list_of_words_has_feature))
+            counter = 0
+            for word_with_feature in list_of_words_has_feature:
+                #  print("word with feature is: " + word_with_feature)
+                word_to_features_index_dict = self.word_to_feature_to_index_dict_type3[word_with_feature]
+                index = word_to_features_index_dict[feature]
+                # print("index is: " + str(index))
+                dist_vec = self.word_to_dist_vec_type3[word_with_feature]
+                counter += dist_vec[index][1]
+            self.pmi_att_type3[feature] = counter / number_of_co_occ_observed_in_corpus
+
+        # sanity check
+        sanity_check_sum_of_features_probabilities = 0
+        for feature in self.pmi_att_type3:
+            sanity_check_sum_of_features_probabilities += self.pmi_att_type3[feature]
+        print("sainty check: sum of probabilities for words " + str(sanity_check_sum_of_features_probabilities))
+
         # calculate p(word)
         for word in self.word_to_set_of_features:
             list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[word]
@@ -362,6 +383,9 @@ class Data:
         for word in self.pmi_word_type3:
             sanity_check_sum_of_words_probabilities += self.pmi_word_type3[word]
         print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
+
+        #calculate p(word,att)
+        
 
 
     def computePmi(self,param1, param2):
