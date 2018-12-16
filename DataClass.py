@@ -183,19 +183,13 @@ class Data:
         for line in self.linesInFile:
             if line == '\n':
                 num_of_Sentence += 1
-                if type == 3:
-                    self.findCoOccuranceForSentence(sentence, type)
-                elif type == 2:
-                    self.findCoOccuranceForSentence2(sentence, type)
-                elif type == 1:
-                    self.findCoOccuranceForSentence1(sentence, type)
+                self.findCoOccuranceForSentence(sentence, type)
                 sentence = []
                 #print('num of sentence: ' + str(num_of_Sentence))
             else:
                 sentence.append(line)
         print('finished')
-        if type == 3:
-            print('number of features is: ' + str(len(self.feature_to_word_type3)))
+        print('number of features is: ' + str(len(self.feature_to_word_type3)))
 
 
 
@@ -208,49 +202,69 @@ class Data:
         for word in sentence:
             splitted_sentences.append(word.split('\t'))
         #go over the words, each time a target word is selected
-        for target_word in splitted_sentences:
+        for i in range(0, len(splitted_sentences)):
+            target_word =  splitted_sentences[i]
             if not self.isContentWord(target_word):
                 continue
-            target_word_id = target_word[0]
-            target_word_is_daughter_id = target_word[6]
-            daughter_stem = splitted_sentences[int(target_word_is_daughter_id)-1][2]
-            daughter_tag = splitted_sentences[int(target_word_is_daughter_id)-1][3]
-            if daughter_stem is self.isContentWord(splitted_sentences[int(target_word_is_daughter_id)-1]):
-                feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][2] +  ' ' + 'is_daughter'
-                self.addFeatureType3(feature_child, target_word)
-            #case 3.1: target word points to preposition
-            elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
-                returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
-                if returned_value != None:
-                    feature_child = returned_value[0] + ' ' + daughter_stem + '-' + returned_value[1]
+            if type == 3:
+                target_word_id = target_word[0]
+                target_word_is_daughter_id = target_word[6]
+                daughter_stem = splitted_sentences[int(target_word_is_daughter_id)-1][2]
+                daughter_tag = splitted_sentences[int(target_word_is_daughter_id)-1][3]
+                if daughter_stem is self.isContentWord(splitted_sentences[int(target_word_is_daughter_id)-1]):
+                    feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][2] +  ' ' + 'is_daughter'
                     self.addFeatureType3(feature_child, target_word)
+                #case 3.1: target word points to preposition
+                elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
+                    returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
+                    if returned_value != None:
+                        feature_child = returned_value[0] + ' ' + daughter_stem + '-' + returned_value[1]
+                        self.addFeatureType3(feature_child, target_word)
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentences)):
                 current_sentence = splitted_sentences[ind]
                 #if there is a word in the sentence that has a dependency relation to the target word
                 head = current_sentence[6]
-                if head == target_word_id:
-                    if type == 3:
-                        #if the word is a preposition - case 3.2
-                        if current_sentence[3] == 'IN' and (current_sentence[1].lower()
-                                                                  in self.prepsitions or
-                                                            current_sentence[2].lower() in self.prepsitions):
-                            returned_value = self.findWordPointsToPreposition(current_sentence, splitted_sentences)
-                            if returned_value is None:
-                                #print('case 3.2 - returned value is none!')
-                                continue
-                            else:
-                                feature_parent = returned_value[0] + ' ' + \
-                                                 current_sentence[2] + '-' + returned_value[1]
-                                add_feature = True
-                        # if the word's tag is in the list of the words that we are interested in them:
-                        elif self.isContentWord(current_sentence[3]):
-                            #create features for parent
-                            feature_parent = current_sentence[2] + ' ' + 'is_parent'
+                if type == 3 and head == target_word_id:
+                    #if the word is a preposition - case 3.2
+                    if current_sentence[3] == 'IN' and (current_sentence[1].lower()
+                                                                in self.prepsitions or
+                                                        current_sentence[2].lower() in self.prepsitions):
+                        returned_value = self.findWordPointsToPreposition(current_sentence, splitted_sentences)
+                        if returned_value is None:
+                            #print('case 3.2 - returned value is none!')
+                            continue
+                        else:
+                            feature_parent = returned_value[0] + ' ' + \
+                                                current_sentence[2] + '-' + returned_value[1]
                             add_feature = True
-                        if add_feature:
-                            self.addFeatureType3(feature_parent, target_word)
-                            add_feature = False
+                    # if the word's tag is in the list of the words that we are interested in them:
+                    elif self.isContentWord(current_sentence[3]):
+                        #create features for parent
+                        feature_parent = current_sentence[2] + ' ' + 'is_parent'
+                        add_feature = True
+                    if add_feature:
+                        self.addFeatureType3(feature_parent, target_word)
+                        add_feature = False
+                elif type == 2:
+                    if i > 0:
+                        word_before = splitted_sentences[i-1][2]
+                        if self.isContentWord(splitted_sentences[i - 1]):
+                            self.addFeatureType3(word_before, target_word)
+                    if i < len(splitted_sentences)-1:
+                        word_after = splitted_sentences[i+1][2]
+                        if self.isContentWord(splitted_sentences[i+1]):
+                            self.addFeatureType3(word_after, target_word)
+                    add_feature = False
+
+                elif type == 1:
+                    #we don't want to have the target word associated with the target word
+                    if i == ind:
+                        continue
+                    if self.isContentWord(current_sentence):
+                        feature = current_sentence[2]
+                        self.addFeatureType3(feature, target_word)
+                        add_feature = False
 
 
     def addFeatureType3(self, feature, sentence):
@@ -309,47 +323,6 @@ class Data:
             self.word_to_feature_to_index_dict_type3[word_lemma] = map_feature_to_index
 
             return
-
-    def findCoOccuranceForSentence2(self, sentence, type):
-        for idx1, w1 in enumerate(sentence):
-            word1 = w1.rstrip().split('\t')
-            index1 = self.word_to_index_mapping[word1[2]]
-            for idx2, w2 in enumerate(sentence):
-                if (idx1 == idx2): continue
-                word2 = w2.rstrip().split('\t')
-                index2 = self.word_to_index_mapping[word2[2]]
-                if (index1 not in self.word_to_set_of_features):
-                    self.word_to_set_of_features[index1] = defaultdict(int)
-                if (index2 not in self.feature_to_word):
-                    self.feature_to_word[index2] = {index1}
-                else:
-                    self.feature_to_word[index2].add(index1)
-                self.word_to_set_of_features[index1][index2] += 1
-
-    def findCoOccuranceForSentence1(self, sentence, type):
-        sentenceIndex = []
-        for w in (sentence):
-            word = w.rstrip().split('\t')
-            sentenceIndex.append(self.word_to_index_mapping[word[2]])
-            for idx, currIndexWord in enumerate(sentenceIndex):
-                window = self.getWordInWindow(sentenceIndex, idx)
-                if (currIndexWord not in self.word_to_set_of_features):
-                    self.word_to_set_of_features[currIndexWord] = defaultdict(int)
-                for windowWord in window:
-                    if (windowWord not in self.feature_to_word):
-                        self.feature_to_word[windowWord] = {currIndexWord}
-                    else:
-                        self.feature_to_word[windowWord].add(currIndexWord)
-                    self.word_to_set_of_features[currIndexWord][windowWord] += 1
-
-    def getWordInWindow(self, arr, index):
-        windowWord = []
-        length = len(arr)
-        for x in range(index - 2, index + 2):
-            if (x > 0 and x < length):
-                windowWord.append(arr[x])
-        return windowWord
-
     def createPMIvectors(self):
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
@@ -430,7 +403,7 @@ class Data:
                     temp1 = p_att_word / (p_word * p_att)
                     temp2 = math.log(temp1)
                     #print(str(temp2))
-                    new_temp2 = format(temp2, '.3f')
+                    new_temp2 = format(temp2, '.5f')
                     result = new_temp2
                 caculated_pmi_pair.append(result)
             self.word_to_pmi_vec[word] = caculated_pmi_pair
@@ -458,20 +431,21 @@ class Data:
         return result
 
     def cosine(self, u_common, v_common, u_full, v_full):
-        u_common= np.array(u_common, dtype=float)
+        u_common = np.array(u_common, dtype=float)
         v_common = np.array(v_common, dtype=float)
-        dot_product = np.dot(u_common, v_common)
         u_full = np.array(u_full, dtype=float)
         v_full = np.array(v_full, dtype=float)
+        dot_product = np.dot(u_common, v_common)
         norm_u = np.linalg.norm(u_full)
         norm_v = np.linalg.norm(v_full)
-        return dot_product / (norm_u * norm_v)
+
+        return (dot_product / (norm_u*norm_v))
 
     def cosineDistance(self, target_word):
         dist = []
         words = []
         top_words = []
-        top_vals = []
+        #top_vals = []
         for word in self.word_to_pmi_vec:
             if word == target_word:
                 continue
@@ -480,27 +454,11 @@ class Data:
             dist.append(cosine_val)
             words.append(word)
         #get top 20
-        min_val_index = 0
-        min_val_value = np.NINF
-        for i in range(0, len(dist)):
-            if top_vals.__len__() < 20:
-                top_vals.append(dist[0])
-                top_words.append(words[0])
-                if dist[0] < min_val_value:
-                    min_val_value = dist[0]
-                    min_val_index = top_vals.__len__() - 1
-                dist.pop(0)
-                words.pop(0)
-            else:
-                if dist[0] > min_val_value:
-                    top_vals.pop(min_val_index)
-                    top_words.pop(min_val_index)
-                    top_vals.append(dist[0])
-                    top_words.append(words[0])
-                    min_val_index = top_vals.index(min(top_vals))
-                    min_val_value = top_vals[min_val_index]
-                dist.pop(0)
-                words.pop(0)
+        for i in range(0, 20):
+            max_val_index = dist.index(max(dist))
+            top_words.append(words[max_val_index])
+            words.pop(max_val_index)
+            dist.pop(max_val_index)
 
         return top_words
 
@@ -541,5 +499,6 @@ if __name__ == '__main__':
     data_object.findCoOccurance(3)
 
     data_object.createPMIvectors()
-    words = data_object.cosineDistance(target_words[0])
-    print("top words for target word: " + target_words[0] + " are: " + ','.join(words))
+    for target_word in target_words:
+        words = data_object.cosineDistance(target_word)
+        print("top words for target word " + target_word + " are: " + ', '.join(words))
