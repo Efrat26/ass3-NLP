@@ -29,6 +29,8 @@ class Data:
 
         #try to make it quicker
         self.word_to_feature_to_index_dict_type3 = {}
+        self.word_to_index_to_feature_dict_type3 = {}
+
         ###for PMI values
         self.pmi_word_type3 = {}
         self.pmi_att_type3 = {}
@@ -213,13 +215,13 @@ class Data:
                 daughter_tag = splitted_sentences[int(target_word_is_daughter_id)-1][3]
                 if daughter_stem is self.isContentWord(splitted_sentences[int(target_word_is_daughter_id)-1]):
                     feature_child = splitted_sentences[int(target_word_is_daughter_id)-1][2] +  ' ' + 'is_daughter'
-                    self.addFeatureType3(feature_child, target_word)
+                    self.addFeature(feature_child, target_word)
                 #case 3.1: target word points to preposition
                 elif daughter_stem in self.prepsitions or daughter_tag == 'IN':
                     returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
                     if returned_value != None:
                         feature_child = returned_value[0] + ' ' + daughter_stem + '-' + returned_value[1]
-                        self.addFeatureType3(feature_child, target_word)
+                        self.addFeature(feature_child, target_word)
             #find all other words that are related to the target
             for ind in range(0, len(splitted_sentences)):
                 current_sentence = splitted_sentences[ind]
@@ -244,17 +246,17 @@ class Data:
                         feature_parent = current_sentence[2] + ' ' + 'is_parent'
                         add_feature = True
                     if add_feature:
-                        self.addFeatureType3(feature_parent, target_word)
+                        self.addFeature(feature_parent, target_word)
                         add_feature = False
                 elif type == 2:
                     if i > 0:
                         word_before = splitted_sentences[i-1][2]
                         if self.isContentWord(splitted_sentences[i - 1]):
-                            self.addFeatureType3(word_before, target_word)
+                            self.addFeature(word_before, target_word)
                     if i < len(splitted_sentences)-1:
                         word_after = splitted_sentences[i+1][2]
                         if self.isContentWord(splitted_sentences[i+1]):
-                            self.addFeatureType3(word_after, target_word)
+                            self.addFeature(word_after, target_word)
                     add_feature = False
 
                 elif type == 1:
@@ -263,11 +265,11 @@ class Data:
                         continue
                     if self.isContentWord(current_sentence):
                         feature = current_sentence[2]
-                        self.addFeatureType3(feature, target_word)
+                        self.addFeature(feature, target_word)
                         add_feature = False
 
 
-    def addFeatureType3(self, feature, sentence):
+    def addFeature(self, feature, sentence):
         word_lemma = sentence[2]
         #map feature to the words contained it
         if feature in self.feature_to_word_type3:
@@ -285,10 +287,11 @@ class Data:
             dist_vec = self.word_to_dist_vec_type3[word_lemma]
             set_of_features = self.word_to_set_of_features[word_lemma]
             feature_index_dict = self.word_to_feature_to_index_dict_type3[word_lemma]
+            index_to_feature_dict = self.word_to_index_to_feature_dict_type3[word_lemma]
             if feature in set_of_features:
                 #retrive the index of the feature in the dist_vec
                 word_index = feature_index_dict[feature]
-                dist_vec[word_index][1] += 1
+                dist_vec[word_index] += 1
                 self.word_to_dist_vec_type3[word_lemma] = dist_vec
                 #set_of_features.add(feature)
                 #self.word_to_set_of_features[word_lemma] = set_of_features
@@ -301,17 +304,19 @@ class Data:
             #if for ended and the feature wasn't found, means we need to create a new pair for it
                 set_of_features.add(feature)
                 self.word_to_set_of_features[word_lemma] = set_of_features
-                new_feature_counter_pair = [feature, 1]
+                new_feature_counter_pair = 1
                 dist_vec.append(new_feature_counter_pair)
                 self.word_to_dist_vec_type3[word_lemma] = dist_vec
                 #add the index of the feature
                 feature_index_dict[feature] = len(set_of_features) - 1
+                index_to_feature_dict[len(set_of_features) - 1] = feature
                 self.word_to_feature_to_index_dict_type3[word_lemma] = feature_index_dict
+                self.word_to_index_to_feature_dict_type3[word_lemma] = index_to_feature_dict
                 return
         #word not in dictionary - need to add it
         else:
             dist_vec = []
-            new_feature_counter_pair = [feature, 1]
+            new_feature_counter_pair = 1
             dist_vec.append(new_feature_counter_pair)
             self.word_to_dist_vec_type3[word_lemma] = dist_vec
             set_of_features = set()
@@ -319,8 +324,11 @@ class Data:
             self.word_to_set_of_features[word_lemma] = set_of_features
 
             map_feature_to_index = {}
+            index_feature_dict = {}
             map_feature_to_index[feature] = 0
+            index_feature_dict[0] = feature
             self.word_to_feature_to_index_dict_type3[word_lemma] = map_feature_to_index
+            self.word_to_index_to_feature_dict_type3[word_lemma] = index_feature_dict
 
             return
     def createPMIvectors(self):
@@ -329,7 +337,7 @@ class Data:
         for key in self.word_to_dist_vec_type3:
             list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[key]
             for i in range(0, len(list_of_dist_vecs_for_word)):
-                number_of_co_occ_observed_in_corpus += list_of_dist_vecs_for_word[i][1]
+                number_of_co_occ_observed_in_corpus += list_of_dist_vecs_for_word[i]
         #number_of_co_occ_observed_in_corpus *= 2
         if number_of_co_occ_observed_in_corpus == 0:
             print("number of co-occurances is zero!")
@@ -350,7 +358,7 @@ class Data:
                 index = word_to_features_index_dict[feature]
                 # print("index is: " + str(index))
                 dist_vec = self.word_to_dist_vec_type3[word_with_feature]
-                counter += dist_vec[index][1]
+                counter += dist_vec[index]
             self.pmi_att_type3[feature] = counter / number_of_co_occ_observed_in_corpus
 
         # sanity check
@@ -364,7 +372,7 @@ class Data:
             list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[word]
             counter = 0
             for i in range(0,len(list_of_dist_vecs_for_word)):
-                counter += list_of_dist_vecs_for_word[i][1]
+                counter += list_of_dist_vecs_for_word[i]
             self.pmi_word_type3[word] = counter / number_of_co_occ_observed_in_corpus
 
         #sainty check
@@ -378,10 +386,10 @@ class Data:
             pmi_vec = []
             dist_vec = self.word_to_dist_vec_type3[word]
             for att in dist_vec:
-                p_att_word = att[1] / number_of_co_occ_observed_in_corpus
-                pair = [att[0], p_att_word]
+                p_att_word = att / number_of_co_occ_observed_in_corpus
+                pair = p_att_word
                 pmi_vec.append(pair)
-                counter += pair[1]
+                counter += pair
             self.pmi_word_att_type3[word] = pmi_vec
         #sanity check
         print("sanity check for sigma on word,att result is: " + str(counter))
@@ -390,11 +398,13 @@ class Data:
         for word in self.pmi_word_att_type3:
             caculated_pmi_pair = []
             pmi_vec = self.pmi_word_att_type3[word]
+            index_to_feature_dict = self.word_to_index_to_feature_dict_type3[word]
             for i in range(0, len(pmi_vec)):
                 current_pair = pmi_vec[i]
-                p_att = self.pmi_att_type3[current_pair[0]]
+                feature = index_to_feature_dict[i]
+                p_att = self.pmi_att_type3[feature]
                 p_word = self.pmi_word_type3[word]
-                p_att_word = current_pair[1]
+                p_att_word = current_pair
                 if p_att == 0 or p_word == 0:
                     result = 0.0
                 elif p_att_word == 0:
