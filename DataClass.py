@@ -9,7 +9,8 @@ class Feature:
         self.count = 1
 
 class Data:
-    def __init__(self, fileName):
+    def __init__(self, fileName, threshold_value, type_co_occ):
+        self.type = type_co_occ
         self.temp = 0
         self.linesInFile = []
         self.num_of_words = defaultdict(int)#key is the word as lemma form (stem)
@@ -18,8 +19,8 @@ class Data:
         self.content_words_tags = set(['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'RB', 'RBR', 'RBS', 'VB',
                                       'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'])
         self.function_words_lemma_form = set(['be', 'have', 'do', '\'s', '[', ']', 'either', 'or', 'and'])
-        #self.threshold = 1
-        self.threshold = 100
+        self.threshold = threshold_value
+        #self.threshold = 600
         self.word_to_index_mapping = {}
         ##simple start
         ### for type 3 dist vectors:
@@ -40,8 +41,6 @@ class Data:
         #of the features is the same as in the distributional vectors
         self.word_to_pmi_vec = {}
 
-        ### for type 1 & 2 dist vectors:
-        self.feature_to_word = {}
 
         self.prepsitions = set(['aboard', 'about', 'above','across','after', 'against', 'ahead of',  'along', 'amid',
                                'amidst',  'among', 'around', 'as', 'as far as', 'as of','aside from', 'at',
@@ -203,6 +202,9 @@ class Data:
         #split the words by '\t'
         for word in sentence:
             splitted_sentences.append(word.split('\t'))
+        #for type 1 : get the indecies of the content words
+        if type==1:
+            content_words_inds_set = self.getIndOfContentWordsInSentence(splitted_sentences)
         #go over the words, each time a target word is selected
         for i in range(0, len(splitted_sentences)):
             target_word =  splitted_sentences[i]
@@ -222,52 +224,60 @@ class Data:
                     if returned_value != None:
                         feature_child = returned_value[0] + ' ' + daughter_stem + '-' + returned_value[1]
                         self.addFeature(feature_child, target_word)
-            #find all other words that are related to the target
-            for ind in range(0, len(splitted_sentences)):
-                current_sentence = splitted_sentences[ind]
-                #if there is a word in the sentence that has a dependency relation to the target word
-                head = current_sentence[6]
-                if type == 3 and head == target_word_id:
-                    #if the word is a preposition - case 3.2
-                    if current_sentence[3] == 'IN' and (current_sentence[1].lower()
-                                                                in self.prepsitions or
-                                                        current_sentence[2].lower() in self.prepsitions):
-                        returned_value = self.findWordPointsToPreposition(current_sentence, splitted_sentences)
-                        if returned_value is None:
-                            #print('case 3.2 - returned value is none!')
-                            continue
-                        else:
-                            feature_parent = returned_value[0] + ' ' + \
-                                                current_sentence[2] + '-' + returned_value[1]
-                            add_feature = True
-                    # if the word's tag is in the list of the words that we are interested in them:
-                    elif self.isContentWord(current_sentence[3]):
-                        #create features for parent
-                        feature_parent = current_sentence[2] + ' ' + 'is_parent'
-                        add_feature = True
-                    if add_feature:
-                        self.addFeature(feature_parent, target_word)
-                        add_feature = False
-                elif type == 2:
-                    if i > 0:
-                        word_before = splitted_sentences[i-1][2]
-                        if self.isContentWord(splitted_sentences[i - 1]):
-                            self.addFeature(word_before, target_word)
-                    if i < len(splitted_sentences)-1:
-                        word_after = splitted_sentences[i+1][2]
-                        if self.isContentWord(splitted_sentences[i+1]):
-                            self.addFeature(word_after, target_word)
-                    add_feature = False
-
-                elif type == 1:
-                    #we don't want to have the target word associated with the target word
+                #find all other words that are related to the target
+                for ind in range(0, len(splitted_sentences)):
+                    # we don't want to have the target word associated with the target word
                     if i == ind:
                         continue
-                    if self.isContentWord(current_sentence):
-                        feature = current_sentence[2]
-                        self.addFeature(feature, target_word)
-                        add_feature = False
+                    current_sentence = splitted_sentences[ind]
+                    #if there is a word in the sentence that has a dependency relation to the target word
+                    head = current_sentence[6]
+                    if type == 3 and head == target_word_id:
+                        #if the word is a preposition - case 3.2
+                        if current_sentence[3] == 'IN' and (current_sentence[1].lower()
+                                                                    in self.prepsitions or
+                                                            current_sentence[2].lower() in self.prepsitions):
+                            returned_value = self.findWordPointsToPreposition(current_sentence, splitted_sentences)
+                            if returned_value is None:
+                                #print('case 3.2 - returned value is none!')
+                                continue
+                            else:
+                                feature_parent = returned_value[0] + ' ' + \
+                                                    current_sentence[2] + '-' + returned_value[1]
+                                add_feature = True
+                        # if the word's tag is in the list of the words that we are interested in them:
+                        elif self.isContentWord(current_sentence[3]):
+                            #create features for parent
+                            feature_parent = current_sentence[2] + ' ' + 'is_parent'
+                            add_feature = True
+                        if add_feature:
+                            self.addFeature(feature_parent, target_word)
+                            add_feature = False
+            elif type == 2:
+                if i > 0:
+                    word_before = splitted_sentences[i-1][2]
+                    if self.isContentWord(splitted_sentences[i - 1]):
+                        self.addFeature(word_before, target_word)
+                if i < len(splitted_sentences)-1:
+                    word_after = splitted_sentences[i+1][2]
+                    if self.isContentWord(splitted_sentences[i+1]):
+                        self.addFeature(word_after, target_word)
+                add_feature = False
 
+            elif type == 1:
+                for index in content_words_inds_set:
+                    if index != i:
+                        feature = splitted_sentences[index][2]
+                        self.addFeature(feature, target_word)
+                add_feature = False
+
+
+    def getIndOfContentWordsInSentence(self, sentences):
+        result = set()
+        for i in range(0,len(sentences)):
+            if self.isContentWord(sentences[i]):
+                result.add(i)
+        return result
 
     def addFeature(self, feature, sentence):
         word_lemma = sentence[2]
@@ -331,7 +341,58 @@ class Data:
             self.word_to_index_to_feature_dict_type3[word_lemma] = index_feature_dict
 
             return
+
+    def filterFeatures(self):
+        print('starting filtering features')
+
+        '''
+
+          ##simple start
+        ### for type 3 dist vectors:
+        self.word_to_dist_vec_type3 = {}
+        self.word_to_set_of_features = {}
+        self.feature_to_word_type3 = {}
+
+        #try to make it quicker
+        self.word_to_feature_to_index_dict_type3 = {}
+        self.word_to_index_to_feature_dict_type3 = {}
+        '''
+        thresholf_co_occ = 20
+        for word in self.word_to_dist_vec_type3:
+            new_dist_vec = []
+            dist_vec = self.word_to_dist_vec_type3[word]
+            set_features_for_word = self.word_to_set_of_features[word]
+            original_dict_index_to_feature = self.word_to_index_to_feature_dict_type3[word]
+            #original_dict_feature_to_index = self.word_to_index_to_feature_dict_type3[word]
+            dict_index_to_feature = {}
+            dict_feature_to_index = {}
+
+            for i in range(0, len(dist_vec)):
+                feature = original_dict_index_to_feature[i]
+                if dist_vec[i] > thresholf_co_occ:
+                    index_in_array = len(new_dist_vec)
+                    new_dist_vec.append(dist_vec[i])
+                    #to know which feature was there
+                    dict_index_to_feature[index_in_array] = feature
+                    dict_feature_to_index[feature] = index_in_array
+                else:
+                    #need to remove the feature
+
+                    #remove word from the set of words of the feature
+                    original_set_of_words = self.feature_to_word_type3[feature]
+                    original_set_of_words.remove(word)
+                    self.feature_to_word_type3[feature] = original_set_of_words
+                    #remove feature from the set of features for word
+                    set_features_for_word.remove(feature)
+            self.word_to_dist_vec_type3[word] = new_dist_vec
+            self.word_to_set_of_features[word] = set_features_for_word
+            self.word_to_index_to_feature_dict_type3[word] = dict_index_to_feature
+            self.word_to_feature_to_index_dict_type3[word] = dict_feature_to_index
+        print('finished filtering features')
+
     def createPMIvectors(self):
+        if self.type == 1:
+            self.filterFeatures()
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
         for key in self.word_to_dist_vec_type3:
@@ -413,7 +474,8 @@ class Data:
                     temp1 = p_att_word / (p_word * p_att)
                     temp2 = math.log(temp1)
                     #print(str(temp2))
-                    new_temp2 = format(temp2, '.5f')
+                    new_temp2 = format(temp2, '.3f')
+                    #new_temp2 = format(temp2, '.5f')
                     result = new_temp2
                 caculated_pmi_pair.append(result)
             self.word_to_pmi_vec[word] = caculated_pmi_pair
@@ -505,8 +567,8 @@ if __name__ == '__main__':
     file_name = 'wikipedia_sample_trees_lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
-    data_object = Data(file_name)
-    data_object.findCoOccurance(3)
+    data_object = Data(file_name, 600, 1)
+    data_object.findCoOccurance(1)
 
     data_object.createPMIvectors()
     for target_word in target_words:
