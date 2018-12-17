@@ -121,52 +121,6 @@ class Data:
             return True
         return False
 
-    def handleCaseThreePointTwo(self, index_of_preposition, sentences):
-        head_index = 0
-        for sentence in sentences:
-            if sentence[7] == 'ROOT':
-                root_index = int(sentence[0])- 1
-                break
-
-        for sentence in sentences:
-            head_index = int(sentence[6])
-            if head_index == 0:
-                head_index = root_index
-            else:
-                head_index -= 1
-            current_sentence = sentences[head_index]
-            current_head_index = int(current_sentence[6])
-            if current_head_index == 0:
-                return root_index
-                #current_head_index = root_index
-            else:
-                current_head_index -= 1
-            if current_head_index == index_of_preposition:
-                return current_head_index
-
-    def handleCaseThreePointOne(self, index_of_preposition, sentences):#find the noun that the preposition points to
-        preposition_head_index = int(sentences[index_of_preposition][6])
-        root_index = 0
-        stop = False
-        for sentence in sentences:
-            if sentence[7] == 'ROOT':
-                root_index = int(sentence[0])-1
-                break
-        while not stop:#go over the heads until you get a non DT
-            if preposition_head_index == 0:
-                if root_index != 0:
-                    root_index -= 1
-                return root_index
-            current_sentence = sentences[preposition_head_index - 1]
-            if current_sentence[3] != 'DT':
-                if preposition_head_index != 0:
-                    preposition_head_index -= 1
-                return preposition_head_index
-            else:
-                preposition_head_index = int(current_sentence[6])
-
-
-
     def findCoOccurance(self, type):
         num_of_Sentence = 0
         sentence = []
@@ -181,7 +135,59 @@ class Data:
         print('finished')
         print('number of features is: ' + str(len(self.feature_to_word_type3)))
 
+    '''
+    handle case 3.1 where the target word points to a preposition -> need to find the head noun that the
+    preposition points to
+    '''
+    def findNounPrepositionPointsTo(self, prep_word, sentences):
+        prep_word_index = int(prep_word[0])
+        root_index = 0
+        index = prep_word_index
+        stop = False
+        # case 3.1 - find the word that the preposition points to and return it with the deprel to the preposition
+        current_sentence = sentences[index]
+        while not stop:
+            current_sentence_tag = current_sentence[3]
+            current_sentence_head = int(current_sentence[6])
+            if current_sentence[7] == 'ROOT':
+                root_index = int(current_sentence[0])-1
+            if current_sentence_head == prep_word_index:
+                #and current_sentence_tag != 'DT'
+                return [current_sentence[2], current_sentence[7]]
+            elif index+1 < len(sentences):
+                index += 1
+                #current_sentence_head = int(current_sentence[6])
+                current_sentence = sentences[index]
+            else:
+                return [sentences[root_index][2], sentences[root_index][7]]
 
+
+    '''
+        handle case 3.2 where a preposition points to the target word -> need to find the word that points on that
+        preposition and return it with the relation
+        '''
+    def findWordPointsToPreposition(self, prep_word, sentences):
+        prep_word_index = prep_word[0]
+        root_index = 0
+        index = 0
+        stop = False
+        # case 3.2 - find the word that the preposition points to and return it with the deprel to the preposition
+        current_sentence = sentences[index]
+        while not stop:
+            current_sentence_tag = current_sentence[3]
+            current_sentence_head = current_sentence[6]
+            if current_sentence[7] == 'ROOT':
+                root_index = int(current_sentence[0]) - 1
+            if current_sentence_head == prep_word_index and current_sentence_tag != 'DT':
+                return [current_sentence[2], current_sentence[7]]
+            elif index+1 < len(sentences):
+                index += 1
+                #current_sentence_head = int(current_sentence[6])
+                current_sentence = sentences[index]
+            else:
+                return [sentences[root_index][2], sentences[root_index][7]]
+
+        return None
 
     def findCoOccuranceForSentence(self, sentence, type):
         #the n dimension in matrix of features
@@ -200,35 +206,48 @@ class Data:
             if not self.isContentWord(target_word):
                 continue
             if type == 3:
-                #go over sentences and check who points on the target word:
-                root_index = 0
+                target_word_id = target_word[0]
+                target_word_head_id = target_word[6]
+                child_lemma = splitted_sentences[int(target_word_head_id) - 1][2]
+                child_tag = splitted_sentences[int(target_word_head_id) - 1][3]
+                if self.isContentWord(splitted_sentences[int(target_word_head_id) - 1]):
+                    feature_child = splitted_sentences[int(target_word_head_id) - 1][2] + ' ' + 'child'
+                    self.addFeature(feature_child, target_word)
+                # case 3.1: target word points to preposition
+                elif child_lemma.lower() in self.prepsitions or child_tag == 'IN':
+                    returned_value = self.findNounPrepositionPointsTo(target_word, splitted_sentences)
+                    if returned_value != None:
+                        feature_child = returned_value[0] + ' ' + child_lemma + '-' + returned_value[1]
+                        self.addFeature(feature_child, target_word)
+                # find all other words that are related to the target
                 for j in range(0, len(splitted_sentences)):
+                    # we don't want to have the target word associated with the target word
+                    if i == j:
+                        continue
                     current_sentence = splitted_sentences[j]
-                    if current_sentence[7] == 'ROOT':
-                        root_index = j
-                    #if the sentence's head is the target word then i should create a feature for it
-                    if current_sentence[6] == target_word[0]:
-                        if current_sentence[3] == 'IN':#case 3.2
-                            returned_value = self.handleCaseThreePointTwo(j, splitted_sentences)
-                            feature = splitted_sentences[returned_value][2] + ' ' + splitted_sentences[returned_value][7] + ' ' + current_sentence[2] + '-prep'
-                            self.addFeature(feature, target_word)
+                    # if there is a word in the sentence that has a dependency relation to the target word
+                    head = current_sentence[6]
+                    if head == target_word_id:
+                        # if the word is a preposition - case 3.2
+                        if current_sentence[3] == 'IN' and (current_sentence[1].lower()
+                                                            in self.prepsitions or
+                                                            current_sentence[2].lower() in self.prepsitions):
+                            returned_value = self.findWordPointsToPreposition(current_sentence, splitted_sentences)
+                            if returned_value is None:
+                                # print('case 3.2 - returned value is none!')
+                                continue
+                            else:
+                                feature_parent = returned_value[0] + ' ' + \
+                                                 current_sentence[2] + '-' + returned_value[1]
+                                add_feature = True
+                        # if the word's tag is in the list of the words that we are interested in them:
                         elif self.isContentWord(current_sentence):
-                            feature = current_sentence[2] + ' ' + current_sentence[7] + ' parent'
-                            self.addFeature(feature, target_word)
-                #create a feature for the head of the target word
-                head_index_of_target = int(target_word[6])
-                if head_index_of_target  == 0:
-                    head_index_of_target = root_index
-                else:
-                    head_index_of_target -= 1
-                if splitted_sentences[head_index_of_target][3] == 'IN':#case 3.1
-                    noun_index = self.handleCaseThreePointOne(head_index_of_target, splitted_sentences)
-                    feature = target_word[2] + ' ' + target_word[7] + ' ' +splitted_sentences[head_index_of_target][2] + '-prep'
-                    self.addFeature(feature, splitted_sentences[noun_index])
-                elif self.isContentWord(splitted_sentences[head_index_of_target]):
-                    feature = target_word[2] + ' ' + target_word[7]+ ' child'
-                    self.addFeature(feature, splitted_sentences[head_index_of_target])
-
+                            # create features for parent
+                            feature_parent = current_sentence[2] + ' ' + 'parent'
+                            add_feature = True
+                        if add_feature:
+                            self.addFeature(feature_parent, target_word)
+                            add_feature = False
             elif type == 2:
                 if i > 0:
                     word_before = splitted_sentences[i-1][2]
@@ -321,7 +340,7 @@ class Data:
         if self.type == 1:
             thresholf_co_occ = 20
         else:
-            thresholf_co_occ = 40
+            thresholf_co_occ = 20
         for word in self.word_to_dist_vec_type3:
             new_dist_vec = []
             dist_vec = self.word_to_dist_vec_type3[word]
@@ -357,7 +376,7 @@ class Data:
         print("number of words after filtering is: " + str(len(self.word_to_dist_vec_type3)))
 
     def createPMIvectors(self):
-        if self.type == 1 or self.type == 3:
+        if self.type == 1:
             self.filterFeatures()
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
@@ -533,7 +552,7 @@ if __name__ == '__main__':
     file_name = 'wikipedia_sample_trees_lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
-    data_object = Data(file_name, 200, 3)
+    data_object = Data(file_name, 100, 3)
     data_object.findCoOccurance(3)
 
     data_object.createPMIvectors()
