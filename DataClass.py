@@ -579,7 +579,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
     data_object = Data(file_name, 100, 3)
-    data_object.findCoOccurance(3)
+    data_object.findCoOccurance()
 
     data_object.createPMIvectors()
     for target_word in target_words:
