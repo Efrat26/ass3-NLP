@@ -121,13 +121,13 @@ class Data:
             return True
         return False
 
-    def findCoOccurance(self, type):
+    def findCoOccurance(self):
         num_of_Sentence = 0
         sentence = []
         for line in self.linesInFile:
             if line == '\n':
                 num_of_Sentence += 1
-                self.findCoOccuranceForSentence(sentence, type)
+                self.findCoOccuranceForSentence(sentence)
                 sentence = []
                 #print('num of sentence: ' + str(num_of_Sentence))
             else:
@@ -189,7 +189,7 @@ class Data:
 
         return None
 
-    def findCoOccuranceForSentence(self, sentence, type):
+    def findCoOccuranceForSentence(self, sentence):
         #the n dimension in matrix of features
         add_feature = False
         splitted_sentences = []
@@ -198,14 +198,14 @@ class Data:
         for word in sentence:
             splitted_sentences.append(word.split('\t'))
         #for type 1 : get the indecies of the content words
-        if type==1:
+        if self.type==1:
             content_words_inds_set = self.getIndOfContentWordsInSentence(splitted_sentences)
         #go over the words, each time a target word is selected
         for i in range(0, len(splitted_sentences)):
             target_word = splitted_sentences[i]
             if not self.isContentWord(target_word):
                 continue
-            if type == 3:
+            if self.type == 3:
                 target_word_id = target_word[0]
                 target_word_head_id = target_word[6]
                 child_lemma = splitted_sentences[int(target_word_head_id) - 1][2]
@@ -248,7 +248,7 @@ class Data:
                         if add_feature:
                             self.addFeature(feature_parent, target_word)
                             add_feature = False
-            elif type == 2:
+            elif self.type == 2:
                 if i > 0:
                     word_before = splitted_sentences[i-1][2]
                     if self.isContentWord(splitted_sentences[i - 1]):
@@ -258,7 +258,7 @@ class Data:
                     if self.isContentWord(splitted_sentences[i+1]):
                         self.addFeature(word_after, target_word)
 
-            elif type == 1:
+            elif self.type == 1:
                 for index in content_words_inds_set:
                     if index != i:
                         feature = splitted_sentences[index][2]
@@ -334,6 +334,32 @@ class Data:
             self.word_to_index_to_feature_dict[word_lemma] = index_feature_dict
 
             return
+
+
+    def printHighestFeatures(self, target_words_list):
+        result = {}
+        for target_word in target_words_list:
+            top_20_features = []
+            features_names = []
+            if target_word in self.word_to_pmi_vec:
+                index_dictionary = self.word_to_index_to_feature_dict[target_word]
+                features_names = [None]*len(index_dictionary)
+                for key in index_dictionary:
+                    features_names[key] = index_dictionary[key]
+                pmi_vec = self.word_to_pmi_vec[target_word]
+                for i in range(0,20):
+                    max_index = pmi_vec.index(max(pmi_vec))
+                    top_20_features.append(features_names[max_index])
+                    pmi_vec.pop(max_index)
+                    features_names.pop(max_index)
+                result[target_word] =  top_20_features
+        #print results
+        for target_word in result:
+            list_of_words = result[target_word]
+            print("top 20 features of " + target_word + " are:" + ', '.join(list_of_words))
+
+
+
 
     def filterFeatures(self):
         print('starting filtering features')
@@ -552,10 +578,11 @@ if __name__ == '__main__':
     file_name = 'wikipedia.sample.trees.lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
-    data_object = Data(file_name, 250, 1)
-    data_object.findCoOccurance(1)
+    data_object = Data(file_name, 100, 3)
+    data_object.findCoOccurance(3)
 
     data_object.createPMIvectors()
     for target_word in target_words:
         words = data_object.cosineDistance(target_word)
         print("top words for target word " + target_word + " are: " + ', '.join(words))
+    data_object.printHighestFeatures(target_words)
