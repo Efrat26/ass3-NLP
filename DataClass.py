@@ -24,18 +24,18 @@ class Data:
         self.word_to_index_mapping = {}
         ##simple start
         ### for type 3 dist vectors:
-        self.word_to_dist_vec_type3 = {}
+        self.word_to_dist_vec = {}
         self.word_to_set_of_features = {}
-        self.feature_to_word_type3 = {}
+        self.feature_to_set_of_words = {}
 
         #try to make it quicker
-        self.word_to_feature_to_index_dict_type3 = {}
-        self.word_to_index_to_feature_dict_type3 = {}
+        self.word_to_feature_to_index_dict = {}
+        self.word_to_index_to_feature_dict = {}
 
         ###for PMI values
-        self.pmi_word_type3 = {}
-        self.pmi_att_type3 = {}
-        self.pmi_word_att_type3 = {}
+        self.pmi_word = {}
+        self.pmi_att = {}
+        self.pmi_word_att = {}
         self.total_co_occ = 0
         # to use less memory PMI vectors include only the values and not a pair of <feature, value>. the order
         #of the features is the same as in the distributional vectors
@@ -133,7 +133,7 @@ class Data:
             else:
                 sentence.append(line)
         print('finished')
-        print('number of features is: ' + str(len(self.feature_to_word_type3)))
+        print('number of features is: ' + str(len(self.feature_to_set_of_words)))
 
     '''
     handle case 3.1 where the target word points to a preposition -> need to find the head noun that the
@@ -275,27 +275,27 @@ class Data:
     def addFeature(self, feature, sentence):
         word_lemma = sentence[2]
         #map feature to the words contained it
-        if feature in self.feature_to_word_type3:
-            set_of_words = self.feature_to_word_type3[feature]
+        if feature in self.feature_to_set_of_words:
+            set_of_words = self.feature_to_set_of_words[feature]
             set_of_words.add(word_lemma)
-            self.feature_to_word_type3[feature] = set_of_words
+            self.feature_to_set_of_words[feature] = set_of_words
         else:
             set_of_words = set()
             set_of_words.add(word_lemma)
-            self.feature_to_word_type3[feature] = set_of_words
+            self.feature_to_set_of_words[feature] = set_of_words
 
         #map the word to the distribtional vectors
 
-        if word_lemma in self.word_to_dist_vec_type3:#word lemma was seen before
-            dist_vec = self.word_to_dist_vec_type3[word_lemma]
+        if word_lemma in self.word_to_dist_vec:#word lemma was seen before
+            dist_vec = self.word_to_dist_vec[word_lemma]
             set_of_features = self.word_to_set_of_features[word_lemma]
-            feature_index_dict = self.word_to_feature_to_index_dict_type3[word_lemma]
-            index_to_feature_dict = self.word_to_index_to_feature_dict_type3[word_lemma]
+            feature_index_dict = self.word_to_feature_to_index_dict[word_lemma]
+            index_to_feature_dict = self.word_to_index_to_feature_dict[word_lemma]
             if feature in set_of_features:
                 #retrive the index of the feature in the dist_vec
                 word_index = feature_index_dict[feature]
                 dist_vec[word_index] += 1
-                self.word_to_dist_vec_type3[word_lemma] = dist_vec
+                self.word_to_dist_vec[word_lemma] = dist_vec
                 #set_of_features.add(feature)
                 #self.word_to_set_of_features[word_lemma] = set_of_features
                 return
@@ -309,19 +309,19 @@ class Data:
                 self.word_to_set_of_features[word_lemma] = set_of_features
                 new_feature_counter_pair = 1
                 dist_vec.append(new_feature_counter_pair)
-                self.word_to_dist_vec_type3[word_lemma] = dist_vec
+                self.word_to_dist_vec[word_lemma] = dist_vec
                 #add the index of the feature
                 feature_index_dict[feature] = len(set_of_features) - 1
                 index_to_feature_dict[len(set_of_features) - 1] = feature
-                self.word_to_feature_to_index_dict_type3[word_lemma] = feature_index_dict
-                self.word_to_index_to_feature_dict_type3[word_lemma] = index_to_feature_dict
+                self.word_to_feature_to_index_dict[word_lemma] = feature_index_dict
+                self.word_to_index_to_feature_dict[word_lemma] = index_to_feature_dict
                 return
         #word not in dictionary - need to add it
         else:
             dist_vec = []
             new_feature_counter_pair = 1
             dist_vec.append(new_feature_counter_pair)
-            self.word_to_dist_vec_type3[word_lemma] = dist_vec
+            self.word_to_dist_vec[word_lemma] = dist_vec
             set_of_features = set()
             set_of_features.add(feature)
             self.word_to_set_of_features[word_lemma] = set_of_features
@@ -330,29 +330,29 @@ class Data:
             index_feature_dict = {}
             map_feature_to_index[feature] = 0
             index_feature_dict[0] = feature
-            self.word_to_feature_to_index_dict_type3[word_lemma] = map_feature_to_index
-            self.word_to_index_to_feature_dict_type3[word_lemma] = index_feature_dict
+            self.word_to_feature_to_index_dict[word_lemma] = map_feature_to_index
+            self.word_to_index_to_feature_dict[word_lemma] = index_feature_dict
 
             return
 
     def filterFeatures(self):
         print('starting filtering features')
         if self.type == 1:
-            thresholf_co_occ = 20
-        else:
-            thresholf_co_occ = 20
-        for word in self.word_to_dist_vec_type3:
+            threshold_co_occ = 20
+        #else:
+        #    thresholf_co_occ = 20
+        for word in self.word_to_dist_vec:
             new_dist_vec = []
-            dist_vec = self.word_to_dist_vec_type3[word]
+            dist_vec = self.word_to_dist_vec[word]
             set_features_for_word = self.word_to_set_of_features[word]
-            original_dict_index_to_feature = self.word_to_index_to_feature_dict_type3[word]
+            original_dict_index_to_feature = self.word_to_index_to_feature_dict[word]
             #original_dict_feature_to_index = self.word_to_index_to_feature_dict_type3[word]
             dict_index_to_feature = {}
             dict_feature_to_index = {}
 
             for i in range(0, len(dist_vec)):
                 feature = original_dict_index_to_feature[i]
-                if dist_vec[i] > thresholf_co_occ:
+                if dist_vec[i] > threshold_co_occ:
                     index_in_array = len(new_dist_vec)
                     new_dist_vec.append(dist_vec[i])
                     #to know which feature was there
@@ -362,26 +362,26 @@ class Data:
                     #need to remove the feature
 
                     #remove word from the set of words of the feature
-                    original_set_of_words = self.feature_to_word_type3[feature]
+                    original_set_of_words = self.feature_to_set_of_words[feature]
                     original_set_of_words.remove(word)
-                    self.feature_to_word_type3[feature] = original_set_of_words
+                    self.feature_to_set_of_words[feature] = original_set_of_words
                     #remove feature from the set of features for word
                     set_features_for_word.remove(feature)
-            self.word_to_dist_vec_type3[word] = new_dist_vec
+            self.word_to_dist_vec[word] = new_dist_vec
             self.word_to_set_of_features[word] = set_features_for_word
-            self.word_to_index_to_feature_dict_type3[word] = dict_index_to_feature
-            self.word_to_feature_to_index_dict_type3[word] = dict_feature_to_index
+            self.word_to_index_to_feature_dict[word] = dict_index_to_feature
+            self.word_to_feature_to_index_dict[word] = dict_feature_to_index
         print('finished filtering features')
-        print("number of features after filtering is: " + str(len(self.feature_to_word_type3)))
-        print("number of words after filtering is: " + str(len(self.word_to_dist_vec_type3)))
+        print("number of features after filtering is: " + str(len(self.feature_to_set_of_words)))
+        print("number of words after filtering is: " + str(len(self.word_to_dist_vec)))
 
     def createPMIvectors(self):
         if self.type == 1:
             self.filterFeatures()
         #calculate #(*,*)
         number_of_co_occ_observed_in_corpus = 0
-        for key in self.word_to_dist_vec_type3:
-            list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[key]
+        for key in self.word_to_dist_vec:
+            list_of_dist_vecs_for_word = self.word_to_dist_vec[key]
             for i in range(0, len(list_of_dist_vecs_for_word)):
                 number_of_co_occ_observed_in_corpus += list_of_dist_vecs_for_word[i]
         #number_of_co_occ_observed_in_corpus *= 2
@@ -392,64 +392,64 @@ class Data:
             print("total co-occ is " + str(number_of_co_occ_observed_in_corpus))
             self.total_co_occ = number_of_co_occ_observed_in_corpus
 
-        for feature in self.feature_to_word_type3:
-            list_of_words_has_feature = self.feature_to_word_type3[feature]
+        for feature in self.feature_to_set_of_words:
+            list_of_words_has_feature = self.feature_to_set_of_words[feature]
             # print(list_of_words_has_feature)
             #print("feature is: " + feature)
             #print("set of words with this feature: " + ' '.join(list_of_words_has_feature))
             counter = 0
             for word_with_feature in list_of_words_has_feature:
                 #  print("word with feature is: " + word_with_feature)
-                word_to_features_index_dict = self.word_to_feature_to_index_dict_type3[word_with_feature]
+                word_to_features_index_dict = self.word_to_feature_to_index_dict[word_with_feature]
                 index = word_to_features_index_dict[feature]
                 # print("index is: " + str(index))
-                dist_vec = self.word_to_dist_vec_type3[word_with_feature]
+                dist_vec = self.word_to_dist_vec[word_with_feature]
                 counter += dist_vec[index]
-            self.pmi_att_type3[feature] = counter / number_of_co_occ_observed_in_corpus
+            self.pmi_att[feature] = counter / number_of_co_occ_observed_in_corpus
 
         # sanity check
         sanity_check_sum_of_features_probabilities = 0
-        for feature in self.pmi_att_type3:
-            sanity_check_sum_of_features_probabilities += self.pmi_att_type3[feature]
+        for feature in self.pmi_att:
+            sanity_check_sum_of_features_probabilities += self.pmi_att[feature]
         print("sainty check: sum of probabilities for words " + str(sanity_check_sum_of_features_probabilities))
 
         # calculate p(word)
         for word in self.word_to_set_of_features:
-            list_of_dist_vecs_for_word = self.word_to_dist_vec_type3[word]
+            list_of_dist_vecs_for_word = self.word_to_dist_vec[word]
             counter = 0
             for i in range(0,len(list_of_dist_vecs_for_word)):
                 counter += list_of_dist_vecs_for_word[i]
-            self.pmi_word_type3[word] = counter / number_of_co_occ_observed_in_corpus
+            self.pmi_word[word] = counter / number_of_co_occ_observed_in_corpus
 
         #sainty check
         sanity_check_sum_of_words_probabilities = 0
-        for word in self.pmi_word_type3:
-            sanity_check_sum_of_words_probabilities += self.pmi_word_type3[word]
+        for word in self.pmi_word:
+            sanity_check_sum_of_words_probabilities += self.pmi_word[word]
         print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
         counter = 0
         #calculate p(word,att) & pmi vector (includes the sanity check counter)
-        for word in self.word_to_dist_vec_type3:
+        for word in self.word_to_dist_vec:
             pmi_vec = []
-            dist_vec = self.word_to_dist_vec_type3[word]
+            dist_vec = self.word_to_dist_vec[word]
             for att in dist_vec:
                 p_att_word = att / number_of_co_occ_observed_in_corpus
                 pair = p_att_word
                 pmi_vec.append(pair)
                 counter += pair
-            self.pmi_word_att_type3[word] = pmi_vec
+            self.pmi_word_att[word] = pmi_vec
         #sanity check
         print("sanity check for sigma on word,att result is: " + str(counter))
 
         #create PMI vector
-        for word in self.pmi_word_att_type3:
+        for word in self.pmi_word_att:
             caculated_pmi_pair = []
-            pmi_vec = self.pmi_word_att_type3[word]
-            index_to_feature_dict = self.word_to_index_to_feature_dict_type3[word]
+            pmi_vec = self.pmi_word_att[word]
+            index_to_feature_dict = self.word_to_index_to_feature_dict[word]
             for i in range(0, len(pmi_vec)):
                 current_pair = pmi_vec[i]
                 feature = index_to_feature_dict[i]
-                p_att = self.pmi_att_type3[feature]
-                p_word = self.pmi_word_type3[word]
+                p_att = self.pmi_att[feature]
+                p_word = self.pmi_word[word]
                 p_att_word = current_pair
                 if p_att == 0 or p_word == 0:
                     result = 0.0
@@ -472,17 +472,17 @@ class Data:
         word = ''
         att = ''
         result = 0.0
-        if param1 in self.feature_to_word_type3 and param2 in self.word_to_set_of_features:
+        if param1 in self.feature_to_set_of_words and param2 in self.word_to_set_of_features:
             word = param2
             att = param1
-        elif param2 in self.feature_to_word_type3 and param1 in self.word_to_set_of_features:
+        elif param2 in self.feature_to_set_of_words and param1 in self.word_to_set_of_features:
             word = param1
             att = param2
         else:
             return result
         if att in self.word_to_set_of_features[word]:
             pmi_vec = self.word_to_pmi_vec[word]
-            index_dict = self.word_to_feature_to_index_dict_type3[word]
+            index_dict = self.word_to_feature_to_index_dict[word]
             index = index_dict[att]
             result = pmi_vec[index]
         return result
@@ -530,8 +530,8 @@ class Data:
         pmi_vec_word2_all_attributes = []
         full_pmi_vec_word1 = self.word_to_pmi_vec[word1]
         full_pmi_vec_word2 = self.word_to_pmi_vec[word2]
-        index_dict_word1 = self.word_to_feature_to_index_dict_type3[word1]
-        index_dict_word2 = self.word_to_feature_to_index_dict_type3[word2]
+        index_dict_word1 = self.word_to_feature_to_index_dict[word1]
+        index_dict_word2 = self.word_to_feature_to_index_dict[word2]
         for feature_word1 in set_attributes_for_word1:
             pmi_vec_word1_all_attributes.append(full_pmi_vec_word1[index_dict_word1[feature_word1]])
             if feature_word1 not in set_attributes_for_word2:
@@ -549,11 +549,11 @@ if __name__ == '__main__':
     #
     target_words = ['car', 'bus', 'hospital', 'hotel', 'gun', 'bomb', 'horse', 'fox', 'table', 'bowl', 'guitar','piano']
     #create data class
-    file_name = 'wikipedia_sample_trees_lemmatized'
+    file_name = 'wikipedia.sample.trees.lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
-    data_object = Data(file_name, 100, 3)
-    data_object.findCoOccurance(3)
+    data_object = Data(file_name, 250, 1)
+    data_object.findCoOccurance(1)
 
     data_object.createPMIvectors()
     for target_word in target_words:
