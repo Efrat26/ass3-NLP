@@ -340,20 +340,27 @@ class Data:
     def printHighestFeatures(self, target_words_list):
         result = {}
         for target_word in target_words_list:
+            number_of_iterations = 20
             top_20_features = []
             features_names = []
             if target_word in self.word_to_pmi_vec:
-                index_dictionary = self.word_to_index_to_feature_dict[target_word]
+                #original_index_dictionary = self.word_to_index_to_feature_dict[target_word]
+                index_dictionary = self.word_to_index_to_feature_dict[target_word].copy()
                 features_names = [None]*len(index_dictionary)
                 for key in index_dictionary:
                     features_names[key] = index_dictionary[key]
-                pmi_vec = self.word_to_pmi_vec[target_word]
-                for i in range(0,20):
+                #original_pmi_vec = self.word_to_pmi_vec[target_word]
+                pmi_vec = self.word_to_pmi_vec[target_word].copy()
+                if len(pmi_vec) < 20:
+                    number_of_iterations = len(pmi_vec)
+                for i in range(0, number_of_iterations):
                     max_index = pmi_vec.index(max(pmi_vec))
                     top_20_features.append(features_names[max_index])
                     pmi_vec.pop(max_index)
                     features_names.pop(max_index)
                 result[target_word] =  top_20_features
+                #self.word_to_index_to_feature_dict[target_word] = original_index_dictionary
+                #self.word_to_pmi_vec[target_word] = original_pmi_vec
         #print results
         for target_word in result:
             list_of_words = result[target_word]
@@ -366,8 +373,8 @@ class Data:
         print('starting filtering features')
         if self.type == 1:
             threshold_co_occ = 20
-        #else:
-        #    thresholf_co_occ = 20
+        elif self.type == 3:
+            threshold_co_occ = 5
         for word in self.word_to_dist_vec:
             new_dist_vec = []
             dist_vec = self.word_to_dist_vec[word]
@@ -583,7 +590,8 @@ if __name__ == '__main__':
     data_object.findCoOccurance()
 
     data_object.createPMIvectors()
+    data_object.printHighestFeatures(target_words)
     for target_word in target_words:
         words = data_object.cosineDistance(target_word)
         print("top words for target word " + target_word + " are: " + ', '.join(words))
-    data_object.printHighestFeatures(target_words)
+
