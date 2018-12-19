@@ -1,0 +1,9 @@
+* we used python 3.6 interpreter
+*to run the part for the distributional vectors, you should run the DataClass.
+in the main - when you create the DataClass, you need to specify the threshold for the content words and the
+type of distributional vectors you would like.
+DataClass.findCoOccurance() - finds the co-occurances for the type specified
+DataClass..createPMIvectors() - creates the PMI vectors
+DataClass..cosineDistance(target_word) - finds the most similar words
+DataClass.printHighestFeatures(target_words_list) - prints the highest features
+

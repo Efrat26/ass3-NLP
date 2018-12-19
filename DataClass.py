@@ -599,12 +599,13 @@ if __name__ == '__main__':
     file_name = 'wikipedia.sample.trees.lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
-    data_object = Data(file_name, 250, 1)
+    data_object = Data(file_name, 100, 3)
     data_object.findCoOccurance()
 
     data_object.createPMIvectors()
-    data_object.printHighestFeatures(target_words)
+
 
     for target_word in target_words:
         words = data_object.cosineDistance(target_word)
         print("top words for target word " + target_word + " are: " + ', '.join(words))
+    data_object.printHighestFeatures(target_words)
