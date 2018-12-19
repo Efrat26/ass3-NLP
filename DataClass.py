@@ -211,8 +211,8 @@ class Data:
                 child_lemma = splitted_sentences[int(target_word_head_id) - 1][2]
                 child_tag = splitted_sentences[int(target_word_head_id) - 1][3]
                 if self.isContentWord(splitted_sentences[int(target_word_head_id) - 1]):
-                    feature_child = splitted_sentences[int(target_word_head_id) - 1][2] + ' ' +splitted_sentences[int(target_word_head_id) - 1][7]\
-                                  +  ' ' + 'child'
+                    feature_child = splitted_sentences[int(target_word_head_id) - 1][2] + ' ' +\
+                                    splitted_sentences[int(target_word_head_id) - 1][7] + ' ' + 'child'
                     self.addFeature(feature_child, target_word)
                 # case 3.1: target word points to preposition
                 elif child_lemma.lower() in self.prepsitions or child_tag == 'IN':
@@ -244,7 +244,7 @@ class Data:
                         # if the word's tag is in the list of the words that we are interested in them:
                         elif self.isContentWord(current_sentence):
                             # create features for parent
-                            feature_parent = current_sentence[2] + ' ' + current_sentence[7] + ' ' + 'parent'
+                            feature_parent = current_sentence[2] + ' ' + current_sentence[7] + ' ' +  'parent'
                             add_feature = True
                         if add_feature:
                             self.addFeature(feature_parent, target_word)
@@ -347,17 +347,12 @@ class Data:
                 features_names = [None]*len(index_dictionary)
                 for key in index_dictionary:
                     features_names[key] = index_dictionary[key]
-                    print("key is: " + str(key) + " and value is: " + index_dictionary[key])
                 pmi_vec = self.word_to_pmi_vec[target_word]
-                for j in range(0, len(pmi_vec)):
-                    print("value at index " + str(j) + " is " + str(pmi_vec[j]))
                 for i in range(0,20):
                     max_index = pmi_vec.index(max(pmi_vec))
-                    print("max index is: " + str(max_index) + " and value is: " + str(pmi_vec[max_index]))
                     top_20_features.append(features_names[max_index])
                     pmi_vec.pop(max_index)
                     features_names.pop(max_index)
-                    print("lengh of pmi vec is: " + str(len(pmi_vec)) + "lengh of features names is: " + str(len(features_names)))
                 result[target_word] =  top_20_features
         #print results
         for target_word in result:
@@ -371,8 +366,7 @@ class Data:
         print('starting filtering features')
         if self.type == 1:
             threshold_co_occ = 20
-        elif self.type == 3:
-            threshold_co_occ = 5
+        #else:
         #    thresholf_co_occ = 20
         for word in self.word_to_dist_vec:
             new_dist_vec = []
@@ -495,7 +489,6 @@ class Data:
                     new_temp2 = format(temp2, '.3f')
                     #new_temp2 = format(temp2, '.5f')
                     result = new_temp2
-                    #result = temp2
                 caculated_pmi_pair.append(result)
             self.word_to_pmi_vec[word] = caculated_pmi_pair
 
@@ -590,9 +583,7 @@ if __name__ == '__main__':
     data_object.findCoOccurance()
 
     data_object.createPMIvectors()
-    data_object.printHighestFeatures(['car'])
-
     for target_word in target_words:
         words = data_object.cosineDistance(target_word)
         print("top words for target word " + target_word + " are: " + ', '.join(words))
-
+    data_object.printHighestFeatures(target_words)
