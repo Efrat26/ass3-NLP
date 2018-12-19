@@ -345,12 +345,13 @@ class Data:
             features_names = []
             if target_word in self.word_to_pmi_vec:
                 #original_index_dictionary = self.word_to_index_to_feature_dict[target_word]
-                index_dictionary = self.word_to_index_to_feature_dict[target_word].copy()
+                original_index_dictionary= self.word_to_index_to_feature_dict[target_word]
+                index_dictionary = original_index_dictionary.copy()
                 features_names = [None]*len(index_dictionary)
                 for key in index_dictionary:
                     features_names[key] = index_dictionary[key]
-                #original_pmi_vec = self.word_to_pmi_vec[target_word]
-                pmi_vec = self.word_to_pmi_vec[target_word].copy()
+                original_pmi_vec = self.word_to_pmi_vec[target_word]
+                pmi_vec = original_pmi_vec.copy()
                 if len(pmi_vec) < 20:
                     number_of_iterations = len(pmi_vec)
                 for i in range(0, number_of_iterations):
@@ -359,8 +360,8 @@ class Data:
                     pmi_vec.pop(max_index)
                     features_names.pop(max_index)
                 result[target_word] =  top_20_features
-                #self.word_to_index_to_feature_dict[target_word] = original_index_dictionary
-                #self.word_to_pmi_vec[target_word] = original_pmi_vec
+                self.word_to_index_to_feature_dict[target_word] = original_index_dictionary
+                self.word_to_pmi_vec[target_word] = original_pmi_vec
         #print results
         for target_word in result:
             list_of_words = result[target_word]
@@ -410,6 +411,7 @@ class Data:
         print("number of words after filtering is: " + str(len(self.word_to_dist_vec)))
 
     def createPMIvectors(self):
+        # or self.type == 3
         if self.type == 1:
             self.filterFeatures()
         #calculate #(*,*)
@@ -492,6 +494,8 @@ class Data:
                 else:
                     temp1 = p_att_word / (p_word * p_att)
                     temp2 = math.log(temp1)
+                    if temp2 < 0:
+                        temp2=0
                     #print(str(temp2))
                     new_temp2 = format(temp2, '.3f')
                     #new_temp2 = format(temp2, '.5f')
@@ -591,7 +595,7 @@ if __name__ == '__main__':
 
     data_object.createPMIvectors()
     data_object.printHighestFeatures(target_words)
+
     for target_word in target_words:
         words = data_object.cosineDistance(target_word)
         print("top words for target word " + target_word + " are: " + ', '.join(words))
-
