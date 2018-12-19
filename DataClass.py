@@ -341,6 +341,7 @@ class Data:
         result = {}
         for target_word in target_words_list:
             number_of_iterations = 20
+            stop = False
             top_20_features = []
             features_names = []
             if target_word in self.word_to_pmi_vec:
@@ -352,10 +353,18 @@ class Data:
                     features_names[key] = index_dictionary[key]
                 original_pmi_vec = self.word_to_pmi_vec[target_word]
                 pmi_vec = original_pmi_vec.copy()
-                if len(pmi_vec) < 20:
-                    number_of_iterations = len(pmi_vec)
-                for i in range(0, number_of_iterations):
+                #if len(pmi_vec) < 20:
+                   # number_of_iterations = len(pmi_vec)
+                #for i in range(0, number_of_iterations):
+                while not stop:
+                    if len(top_20_features) == 20:
+                        stop = True
+                        break
                     max_index = pmi_vec.index(max(pmi_vec))
+                    if features_names[max_index] == target_word:
+                        pmi_vec.pop(max_index)
+                        features_names.pop(max_index)
+                        continue
                     top_20_features.append(features_names[max_index])
                     pmi_vec.pop(max_index)
                     features_names.pop(max_index)
@@ -375,7 +384,7 @@ class Data:
         if self.type == 1:
             threshold_co_occ = 20
         elif self.type == 3:
-            threshold_co_occ = 5
+            threshold_co_occ = 2
         for word in self.word_to_dist_vec:
             new_dist_vec = []
             dist_vec = self.word_to_dist_vec[word]
@@ -590,7 +599,7 @@ if __name__ == '__main__':
     file_name = 'wikipedia.sample.trees.lemmatized'
     if len(sys.argv) > 0:
         file_name = sys.argv[1]
-    data_object = Data(file_name, 100, 3)
+    data_object = Data(file_name, 250, 1)
     data_object.findCoOccurance()
 
     data_object.createPMIvectors()
