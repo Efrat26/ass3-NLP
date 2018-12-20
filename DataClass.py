@@ -65,7 +65,7 @@ class Data:
     def readData(self):
         with open(file_name, 'r', encoding="utf8") as f:
             self.linesInFile = f.readlines()
-        print("finished reading data")
+        #print("finished reading data")
 
 
     def indexWords(self):
@@ -73,7 +73,7 @@ class Data:
         for key in self.num_of_words:
             self.word_to_index_mapping[key] = counter
             counter += 1
-        print('finished indexing words')
+        #print('finished indexing words')
 
 
 
@@ -86,7 +86,7 @@ class Data:
                     in self.function_words_lemma_form:
                 continue
             self.num_of_words[spltted_line[2]] += 1
-        print('finished counting words')
+        #print('finished counting words')
 
 
     def filterWords(self):
@@ -96,8 +96,8 @@ class Data:
                 keys_to_drop.append(key)
         for key in keys_to_drop:
             self.num_of_words.pop(key, None)
-        print("number of content words after filtering is: " + str(len(self.num_of_words)))
-        print("finished filtering dictionary")
+        #print("number of content words after filtering is: " + str(len(self.num_of_words)))
+        #print("finished filtering dictionary")
 
 
     def mapContentWordsToInd(self):
@@ -132,8 +132,8 @@ class Data:
                 #print('num of sentence: ' + str(num_of_Sentence))
             else:
                 sentence.append(line)
-        print('finished')
-        print('number of features is: ' + str(len(self.feature_to_set_of_words)))
+        #print('finished')
+        #print('number of features is: ' + str(len(self.feature_to_set_of_words)))
 
     '''
     handle case 3.1 where the target word points to a preposition -> need to find the head noun that the
@@ -380,7 +380,7 @@ class Data:
 
 
     def filterFeatures(self):
-        print('starting filtering features')
+        #print('starting filtering features')
         if self.type == 1:
             threshold_co_occ = 20
         elif self.type == 3:
@@ -415,9 +415,9 @@ class Data:
             self.word_to_set_of_features[word] = set_features_for_word
             self.word_to_index_to_feature_dict[word] = dict_index_to_feature
             self.word_to_feature_to_index_dict[word] = dict_feature_to_index
-        print('finished filtering features')
-        print("number of features after filtering is: " + str(len(self.feature_to_set_of_words)))
-        print("number of words after filtering is: " + str(len(self.word_to_dist_vec)))
+        #print('finished filtering features')
+       # print("number of features after filtering is: " + str(len(self.feature_to_set_of_words)))
+        #print("number of words after filtering is: " + str(len(self.word_to_dist_vec)))
 
     def createPMIvectors(self):
         # or self.type == 3
@@ -433,8 +433,8 @@ class Data:
         if number_of_co_occ_observed_in_corpus == 0:
             print("number of co-occurances is zero!")
             return
-        else:
-            print("total co-occ is " + str(number_of_co_occ_observed_in_corpus))
+        #else:
+            #print("total co-occ is " + str(number_of_co_occ_observed_in_corpus))
             self.total_co_occ = number_of_co_occ_observed_in_corpus
 
         for feature in self.feature_to_set_of_words:
@@ -456,7 +456,7 @@ class Data:
         sanity_check_sum_of_features_probabilities = 0
         for feature in self.pmi_att:
             sanity_check_sum_of_features_probabilities += self.pmi_att[feature]
-        print("sainty check: sum of probabilities for words " + str(sanity_check_sum_of_features_probabilities))
+       # print("sainty check: sum of probabilities for words " + str(sanity_check_sum_of_features_probabilities))
 
         # calculate p(word)
         for word in self.word_to_set_of_features:
@@ -470,7 +470,7 @@ class Data:
         sanity_check_sum_of_words_probabilities = 0
         for word in self.pmi_word:
             sanity_check_sum_of_words_probabilities += self.pmi_word[word]
-        print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
+        #print("sanity check: sum of probabilities for words " + str(sanity_check_sum_of_words_probabilities))
         counter = 0
         #calculate p(word,att) & pmi vector (includes the sanity check counter)
         for word in self.word_to_dist_vec:
@@ -483,7 +483,7 @@ class Data:
                 counter += pair
             self.pmi_word_att[word] = pmi_vec
         #sanity check
-        print("sanity check for sigma on word,att result is: " + str(counter))
+        #print("sanity check for sigma on word,att result is: " + str(counter))
 
         #create PMI vector
         for word in self.pmi_word_att:
